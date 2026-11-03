@@ -40,6 +40,7 @@ import type {
   GeneratedPurchaseOrder,
   InventoryLogItem,
   KioskModelMaster,
+  KioskProductStatus,
   PartCategory,
   PartnerCompany,
 } from './types/order'
@@ -153,17 +154,28 @@ function App() {
   >('ALL')
   const [inventorySearch, setInventorySearch] = useState<string>('')
   const [safetyStockMap, setSafetyStockMap] = useState<Record<string, number>>({
-    'DSP-32-4K': 5,
-    'CPU-I5-12G': 5,
-    'PAY-IC-EMV': 5,
-    'PRT-3IN-80': 5,
+    'PNL-270-FHD': 5,
+    'PNL-215-FHD': 5,
+    'PNL-320-UHD': 4,
+    'PNL-156-FHD': 5,
+    'PNL-430-OUT': 3,
+    'SBC-I5-12G': 5,
+    'SBC-I3-8G': 5,
+    'NET-LTE-5G': 5,
+    'AUD-AMP-20W': 5,
+    'PAY-IC-900': 5,
+    'BF-KEY-AUD': 3,
     'SCN-2D-QR': 5,
-    'ENC-32-STL': 3,
-    'PWR-SMPS-24': 8,
-    'NET-ROUT-5G': 5,
-    'DSP-24-FHD': 5,
-    'CPU-J6412': 5,
-    'ENC-24-DSK': 3,
+    'PRT-80-THM': 5,
+    'CAM-AI-FHD': 4,
+    'ENC-27S-STL': 3,
+    'ENC-21D-SLM': 3,
+    'ENC-32M-BF': 2,
+    'FAN-120-DUAL': 8,
+    'LCK-CAM-KEY': 5,
+    'PWR-24V-HAR': 8,
+    'CBL-KIT-PRO': 10,
+    'PWR-SURGE-6P': 6,
   })
   const [customInventoryParts, setCustomInventoryParts] = useState<BomPart[]>([])
   const [showAddInventoryPartForm, setShowAddInventoryPartForm] = useState<boolean>(false)
@@ -182,29 +194,29 @@ function App() {
       id: 'LOG-103',
       timestamp: '2026-11-03 09:30',
       type: 'IN',
-      partCode: 'PWR-SMPS-24',
-      partName: '듀얼 채널 산업용 SMPS 파워서플라이',
-      changeQty: 12,
-      afterStockQty: 12,
-      unit: 'EA',
-      note: '정기 안전재고 보충 입고 ((주)대성파워일렉트로닉스)',
+      partCode: 'PWR-24V-HAR',
+      partName: '산업용 듀얼 SMPS 파워서플라이 및 내부 통합 와이어 하네스',
+      changeQty: 10,
+      afterStockQty: 10,
+      unit: 'SET',
+      note: '정기 안전재고 보충 입고 (대성파워일렉트로닉스)',
     },
     {
       id: 'LOG-102',
       timestamp: '2026-11-02 16:15',
-      partCode: 'PRT-3IN-80',
-      partName: '3인치 고속 감열식 영수증 프린터 모듈',
+      partCode: 'PRT-80-THM',
+      partName: '3인치 고속 감열식 영수증 프린터 (오토커터)',
       type: 'IN',
-      changeQty: 8,
-      afterStockQty: 8,
+      changeQty: 3,
+      afterStockQty: 3,
       unit: 'EA',
       note: '창고 실사 및 기초 재고 등록',
     },
     {
       id: 'LOG-101',
       timestamp: '2026-11-02 14:00',
-      partCode: 'DSP-32-4K',
-      partName: '32인치 4K 정전식 터치 디스플레이 모듈',
+      partCode: 'PNL-270-FHD',
+      partName: '27인치 산업용 FHD 터치 디스플레이 모듈',
       type: 'OUT',
       changeQty: -2,
       afterStockQty: 4,
@@ -213,7 +225,7 @@ function App() {
     },
   ])
 
-  // Step 4: Master management states
+  // Step 5: Master management states (Kiosk Products, 10+ BOMs, Partners)
   const [editingPartnerId, setEditingPartnerId] = useState<string | null>(null)
   const [partnerFilter, setPartnerFilter] = useState<'ALL' | 'CLIENT' | 'SUPPLIER'>('ALL')
   const [showNewPartnerForm, setShowNewPartnerForm] = useState<boolean>(false)
@@ -230,6 +242,27 @@ function App() {
   const [selectedMasterModelCode, setSelectedMasterModelCode] = useState<string>(
     KIOSK_MODELS[0].modelCode
   )
+  const [modelSearch, setModelSearch] = useState<string>('')
+  const [modelStatusFilter, setModelStatusFilter] = useState<'ALL' | KioskProductStatus>('ALL')
+  const [showAddModelForm, setShowAddModelForm] = useState<boolean>(false)
+  const [newModelForm, setNewModelForm] = useState<{
+    modelCode: string
+    modelName: string
+    spec: string
+    status: KioskProductStatus
+    copyFromModelCode: string
+  }>({
+    modelCode: '',
+    modelName: '',
+    spec: '',
+    status: 'NEW',
+    copyFromModelCode: KIOSK_MODELS[0].modelCode,
+  })
+  const [editingModelCode, setEditingModelCode] = useState<string | null>(null)
+  const [masterBomCategoryFilter, setMasterBomCategoryFilter] = useState<'전체' | PartCategory>('전체')
+  const [editingMasterPartCode, setEditingMasterPartCode] = useState<string | null>(null)
+  const [selectedExistingPartCode, setSelectedExistingPartCode] = useState<string>('')
+  const [existingPartAddQty, setExistingPartAddQty] = useState<number>(1)
   const [showAddMasterBomForm, setShowAddMasterBomForm] = useState<boolean>(false)
   const [newMasterPart, setNewMasterPart] = useState({
     partCode: '',
@@ -238,7 +271,7 @@ function App() {
     spec: '',
     unit: 'EA',
     qtyPerUnit: 1,
-    stockQty: 0,
+    stockQty: 5,
     supplierId: 'SUP-01',
   })
 
@@ -912,6 +945,240 @@ function App() {
     setPartners((prev) =>
       prev.map((p) => (p.id === id ? { ...p, [field]: value } : p))
     )
+    // Also sync supplier info across all model BOMs and inventory
+    setKioskModels((prev) =>
+      prev.map((m) => ({
+        ...m,
+        bom: m.bom.map((b) => {
+          if (b.supplierId !== id) return b
+          return {
+            ...b,
+            supplierName: field === 'name' ? String(value) : b.supplierName,
+            supplierBizNo: field === 'bizNo' ? String(value) : b.supplierBizNo,
+            supplierManager: field === 'manager' ? String(value) : b.supplierManager,
+            supplierPhone: field === 'phone' ? String(value) : b.supplierPhone,
+            supplierEmail: field === 'email' ? String(value) : b.supplierEmail,
+            leadTimeDays: field === 'leadTimeDays' ? Number(value) || 3 : b.leadTimeDays,
+          }
+        }),
+      }))
+    )
+  }
+
+  // Kiosk Product (Model) Master CRUD (신제품 추가, 제품명/스펙 수정, 판매중/품절 전환, 삭제)
+  const filteredMasterModels = useMemo(() => {
+    return kioskModels.filter((m) => {
+      const status = m.status || 'ACTIVE'
+      if (modelStatusFilter !== 'ALL' && status !== modelStatusFilter) return false
+      if (modelSearch.trim()) {
+        const q = modelSearch.trim().toLowerCase()
+        return (
+          m.modelCode.toLowerCase().includes(q) ||
+          m.modelName.toLowerCase().includes(q) ||
+          m.spec.toLowerCase().includes(q)
+        )
+      }
+      return true
+    })
+  }, [kioskModels, modelStatusFilter, modelSearch])
+
+  const handleCreateKioskModel = () => {
+    if (!newModelForm.modelName.trim()) {
+      showToast('신규 키오스크 제품명을 입력해 주세요.')
+      return
+    }
+    logSeqRef.current += 1
+    const code =
+      newModelForm.modelCode.trim().toUpperCase() || `KSK-${3000 + logSeqRef.current}N`
+
+    if (kioskModels.some((m) => m.modelCode === code)) {
+      showToast(`이미 존재하는 모델코드(${code})입니다.`)
+      return
+    }
+
+    const baseModel = kioskModels.find((m) => m.modelCode === newModelForm.copyFromModelCode)
+    const copiedBom: BomPart[] = baseModel ? baseModel.bom.map((b) => ({ ...b })) : []
+
+    const created: KioskModelMaster = {
+      modelCode: code,
+      modelName: newModelForm.modelName.trim(),
+      spec: newModelForm.spec.trim() || '신규 등록 키오스크 표준 사양',
+      status: newModelForm.status,
+      bom: copiedBom,
+    }
+
+    setKioskModels((prev) => [created, ...prev])
+    setSelectedMasterModelCode(created.modelCode)
+    setShowAddModelForm(false)
+    setNewModelForm({
+      modelCode: '',
+      modelName: '',
+      spec: '',
+      status: 'NEW',
+      copyFromModelCode: created.modelCode,
+    })
+    showToast(
+      `신규 키오스크 제품 "[${created.modelCode}] ${created.modelName}" (BOM ${copiedBom.length}종 포함) 등록이 완료되었습니다!`
+    )
+  }
+
+  const handleUpdateKioskModel = (
+    modelCode: string,
+    field: 'modelName' | 'spec' | 'status',
+    value: string
+  ) => {
+    setKioskModels((prev) =>
+      prev.map((m) => (m.modelCode === modelCode ? { ...m, [field]: value } : m))
+    )
+    if (field === 'modelName' || field === 'spec') {
+      setClientOrder((prev) => ({
+        ...prev,
+        items: prev.items.map((it) =>
+          it.modelCode === modelCode ? { ...it, [field]: value } : it
+        ),
+      }))
+    }
+    if (field === 'status') {
+      const label =
+        value === 'NEW' ? '신제품' : value === 'SOLD_OUT' ? '일시품절(수주불가)' : '정상 판매중'
+      showToast(`[${modelCode}] 제품 상태가 "${label}"(으)로 변경되었습니다.`)
+    }
+  }
+
+  const handleDeleteKioskModel = (modelCode: string, modelName: string) => {
+    if (kioskModels.length <= 1) {
+      showToast('최소 1개 이상의 키오스크 제품이 필요합니다.')
+      return
+    }
+    const nextModels = kioskModels.filter((m) => m.modelCode !== modelCode)
+    setKioskModels(nextModels)
+    if (selectedMasterModelCode === modelCode) {
+      setSelectedMasterModelCode(nextModels[0].modelCode)
+    }
+    showToast(`"[${modelCode}] ${modelName}" 제품이 삭제되었습니다.`)
+  }
+
+  // Model BOM Part CRUD (대당 소요량, 부품 정보, 창고 기존 부품 추가, 신규 부품 추가)
+  const handleUpdateMasterBomPart = (
+    modelCode: string,
+    partCode: string,
+    field: keyof BomPart,
+    value: string | number
+  ) => {
+    if (field === 'stockQty') {
+      handleAdjustWarehouseStock(
+        partCode,
+        Math.max(0, Number(value) || 0),
+        `[${modelCode}] BOM 마스터에서 현재고 수정`,
+        'ADJUST'
+      )
+      return
+    }
+
+    if (field === 'supplierId') {
+      const sup = supplierPartners.find((s) => s.id === value)
+      if (!sup) return
+      setKioskModels((prev) =>
+        prev.map((m) =>
+          m.modelCode === modelCode
+            ? {
+                ...m,
+                bom: m.bom.map((b) =>
+                  b.partCode === partCode
+                    ? {
+                        ...b,
+                        supplierId: sup.id,
+                        supplierName: sup.name,
+                        supplierBizNo: sup.bizNo,
+                        supplierManager: sup.manager,
+                        supplierPhone: sup.phone,
+                        supplierEmail: sup.email,
+                        leadTimeDays: sup.leadTimeDays,
+                      }
+                    : b
+                ),
+              }
+            : m
+        )
+      )
+      return
+    }
+
+    setKioskModels((prev) =>
+      prev.map((m) =>
+        m.modelCode === modelCode
+          ? {
+              ...m,
+              bom: m.bom.map((b) =>
+                b.partCode === partCode
+                  ? {
+                      ...b,
+                      [field]:
+                        field === 'qtyPerUnit'
+                          ? Math.max(1, Number(value) || 1)
+                          : value,
+                    }
+                  : b
+              ),
+            }
+          : m
+      )
+    )
+  }
+
+  const handleAddExistingPartToModelBom = () => {
+    if (!selectedExistingPartCode) {
+      showToast('추가할 창고 부품을 선택해 주세요.')
+      return
+    }
+    const whPart = warehouseInventory.find((p) => p.partCode === selectedExistingPartCode)
+    if (!whPart) return
+
+    const targetModel = kioskModels.find((m) => m.modelCode === selectedMasterModelCode)
+    if (!targetModel) return
+
+    const existsInModel = targetModel.bom.some((b) => b.partCode === whPart.partCode)
+    if (existsInModel) {
+      handleUpdateMasterBomPart(
+        selectedMasterModelCode,
+        whPart.partCode,
+        'qtyPerUnit',
+        (targetModel.bom.find((b) => b.partCode === whPart.partCode)?.qtyPerUnit || 1) +
+          Math.max(1, existingPartAddQty)
+      )
+      showToast(
+        `[${selectedMasterModelCode}]에 이미 있는 "${whPart.partName}"의 대당 소요량을 +${existingPartAddQty} 증가시켰습니다.`
+      )
+      return
+    }
+
+    const addedPart: BomPart = {
+      partCode: whPart.partCode,
+      partName: whPart.partName,
+      category: whPart.category,
+      spec: whPart.spec,
+      unit: whPart.unit,
+      qtyPerUnit: Math.max(1, existingPartAddQty),
+      stockQty: whPart.stockQty,
+      supplierId: whPart.supplierId,
+      supplierName: whPart.supplierName,
+      supplierBizNo: whPart.supplierBizNo,
+      supplierManager: whPart.supplierManager,
+      supplierPhone: whPart.supplierPhone,
+      supplierEmail: whPart.supplierEmail,
+      leadTimeDays: whPart.leadTimeDays,
+    }
+
+    setKioskModels((prev) =>
+      prev.map((m) =>
+        m.modelCode === selectedMasterModelCode ? { ...m, bom: [...m.bom, addedPart] } : m
+      )
+    )
+    setSelectedExistingPartCode('')
+    setExistingPartAddQty(1)
+    showToast(
+      `[${selectedMasterModelCode}] BOM에 "${addedPart.partName}" (대당 ${addedPart.qtyPerUnit}${addedPart.unit}) 부품이 연결되었습니다.`
+    )
   }
 
   const handleAddMasterBomPart = () => {
@@ -919,17 +1186,18 @@ function App() {
       showToast('부품명을 입력해 주세요.')
       return
     }
+    logSeqRef.current += 1
     const sup =
       supplierPartners.find((s) => s.id === newMasterPart.supplierId) || supplierPartners[0]
     const part: BomPart = {
       partCode:
-        newMasterPart.partCode.trim() || `PRT-${Math.floor(100 + Math.random() * 899)}`,
+        newMasterPart.partCode.trim() || `PRT-${100 + logSeqRef.current}`,
       partName: newMasterPart.partName.trim(),
       category: newMasterPart.category,
       spec: newMasterPart.spec.trim() || '표준 규격',
       unit: newMasterPart.unit || 'EA',
-      qtyPerUnit: newMasterPart.qtyPerUnit || 1,
-      stockQty: newMasterPart.stockQty || 0,
+      qtyPerUnit: Math.max(1, newMasterPart.qtyPerUnit || 1),
+      stockQty: Math.max(0, newMasterPart.stockQty || 0),
       supplierId: sup?.id || 'SUP-01',
       supplierName: sup?.name || '(주)한빛디스플레이테크',
       supplierBizNo: sup?.bizNo || '120-87-44910',
@@ -952,7 +1220,7 @@ function App() {
       spec: '',
       unit: 'EA',
       qtyPerUnit: 1,
-      stockQty: 0,
+      stockQty: 5,
       supplierId: supplierPartners[0]?.id || 'SUP-01',
     })
     showToast(`${selectedMasterModelCode} 표준 BOM에 "${part.partName}" 부품이 추가되었습니다.`)
@@ -1570,18 +1838,33 @@ function App() {
                 {/* Ordered Kiosk Products Table */}
                 <div className="p-5 rounded-2xl bg-slate-50/80 border border-slate-200 space-y-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="text-base font-extrabold text-indigo-900 flex items-center gap-2">
-                      <ClipboardList className="w-5 h-5 text-indigo-600" />
-                      스캔된 주문 키오스크 제품 및 수량
-                    </h3>
-                    <button
-                      type="button"
-                      onClick={handleAddOrderItem}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-colors cursor-pointer"
-                    >
-                      <Plus className="w-4 h-4" />
-                      주문 키오스크 추가
-                    </button>
+                    <div>
+                      <h3 className="text-base font-extrabold text-indigo-900 flex items-center gap-2">
+                        <ClipboardList className="w-5 h-5 text-indigo-600" />
+                        스캔된 주문 키오스크 제품 및 수량 (총 {kioskModels.length}종 모델 연동)
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        신제품 추가, 품절 설정 및 모델별 BOM(부품 소요량) 구성은 우측 버튼 또는 5번 탭에서 관리할 수 있습니다.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('STEP4_MASTER')}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 transition-colors cursor-pointer"
+                      >
+                        <Layers className="w-3.5 h-3.5 text-violet-600" />
+                        신제품·품절·모델별 BOM 관리
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleAddOrderItem}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4" />
+                        주문 키오스크 추가
+                      </button>
+                    </div>
                   </div>
 
                   <div className="overflow-x-auto bg-white rounded-xl border border-slate-200">
@@ -1595,75 +1878,113 @@ function App() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200">
-                        {clientOrder.items.map((item) => (
-                          <tr key={item.id} className="hover:bg-slate-50">
-                            <td className="py-3.5 px-4">
-                              <select
-                                value={item.modelCode}
-                                onChange={(e) => handleModelChange(item.id, e.target.value)}
-                                className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 font-bold text-sm focus:outline-none focus:border-indigo-500"
-                              >
-                                {kioskModels.map((m) => (
-                                  <option key={m.modelCode} value={m.modelCode}>
-                                    [{m.modelCode}] {m.modelName}
-                                  </option>
-                                ))}
-                              </select>
-                            </td>
-                            <td className="py-3.5 px-4">
-                              <input
-                                type="text"
-                                value={item.spec}
-                                onChange={(e) =>
-                                  setClientOrder((prev) => ({
-                                    ...prev,
-                                    items: prev.items.map((it) =>
-                                      it.id === item.id ? { ...it, spec: e.target.value } : it
-                                    ),
-                                  }))
-                                }
-                                className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-slate-700 text-sm focus:outline-none focus:border-indigo-500"
-                              />
-                            </td>
-                            <td className="py-3.5 px-4">
-                              <div className="flex items-center justify-center gap-1.5">
-                                <button
-                                  type="button"
-                                  onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
-                                  className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold cursor-pointer border border-slate-300 text-base"
+                        {clientOrder.items.map((item) => {
+                          const matchedModel = kioskModels.find(
+                            (m) => m.modelCode === item.modelCode
+                          )
+                          const modelStatus = matchedModel?.status || 'ACTIVE'
+                          return (
+                            <tr key={item.id} className="hover:bg-slate-50">
+                              <td className="py-3.5 px-4">
+                                <select
+                                  value={item.modelCode}
+                                  onChange={(e) => handleModelChange(item.id, e.target.value)}
+                                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 font-bold text-sm focus:outline-none focus:border-indigo-500"
                                 >
-                                  -
-                                </button>
+                                  {kioskModels.map((m) => {
+                                    const st =
+                                      m.status === 'NEW'
+                                        ? '[신제품] '
+                                        : m.status === 'SOLD_OUT'
+                                          ? '[일시품절] '
+                                          : ''
+                                    return (
+                                      <option key={m.modelCode} value={m.modelCode}>
+                                        {st}[{m.modelCode}] {m.modelName} (BOM {m.bom.length}종)
+                                      </option>
+                                    )
+                                  })}
+                                </select>
+                                <div className="flex items-center gap-2 mt-1.5">
+                                  {modelStatus === 'NEW' && (
+                                    <span className="px-2 py-0.5 rounded text-[11px] font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                      NEW 신제품
+                                    </span>
+                                  )}
+                                  {modelStatus === 'SOLD_OUT' && (
+                                    <span className="px-2 py-0.5 rounded text-[11px] font-extrabold bg-rose-50 text-rose-700 border border-rose-200">
+                                      일시품절 설정된 모델입니다
+                                    </span>
+                                  )}
+                                  {matchedModel && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedMasterModelCode(matchedModel.modelCode)
+                                        setActiveTab('STEP4_MASTER')
+                                      }}
+                                      className="text-xs font-bold text-violet-600 hover:underline cursor-pointer"
+                                    >
+                                      표준 BOM {matchedModel.bom.length}종 구성 보기/수정 →
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-3.5 px-4">
                                 <input
-                                  type="number"
-                                  min={1}
-                                  value={item.quantity}
+                                  type="text"
+                                  value={item.spec}
                                   onChange={(e) =>
-                                    handleQuantityChange(item.id, Number(e.target.value) || 1)
+                                    setClientOrder((prev) => ({
+                                      ...prev,
+                                      items: prev.items.map((it) =>
+                                        it.id === item.id ? { ...it, spec: e.target.value } : it
+                                      ),
+                                    }))
                                   }
-                                  className="w-16 text-center py-1.5 rounded-lg bg-white border border-slate-300 text-slate-900 font-extrabold text-base"
+                                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-slate-700 text-sm focus:outline-none focus:border-indigo-500"
                                 />
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
+                                    className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold cursor-pointer border border-slate-300 text-base"
+                                  >
+                                    -
+                                  </button>
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    value={item.quantity}
+                                    onChange={(e) =>
+                                      handleQuantityChange(item.id, Number(e.target.value) || 1)
+                                    }
+                                    className="w-16 text-center py-1.5 rounded-lg bg-white border border-slate-300 text-slate-900 font-extrabold text-base"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
+                                    className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold cursor-pointer border border-slate-300 text-base"
+                                  >
+                                    +
+                                  </button>
+                                  <span className="text-slate-600 font-semibold ml-1">대</span>
+                                </div>
+                              </td>
+                              <td className="py-3.5 px-3 text-center">
                                 <button
                                   type="button"
-                                  onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
-                                  className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold cursor-pointer border border-slate-300 text-base"
+                                  onClick={() => handleRemoveOrderItem(item.id)}
+                                  className="p-2 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
                                 >
-                                  +
+                                  <Trash2 className="w-4 h-4" />
                                 </button>
-                                <span className="text-slate-600 font-semibold ml-1">대</span>
-                              </div>
-                            </td>
-                            <td className="py-3.5 px-3 text-center">
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveOrderItem(item.id)}
-                                className="p-2 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
+                              </td>
+                            </tr>
+                          )
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -1980,12 +2301,21 @@ function App() {
                         <td className="py-4 px-4 align-middle">
                           <div className="flex flex-wrap gap-1.5">
                             {part.sourceModels.map((m) => (
-                              <span
+                              <button
                                 key={m.modelCode}
-                                className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-100 font-semibold text-xs whitespace-nowrap"
+                                type="button"
+                                title="클릭하여 이 모델의 대당 BOM 소요량 관리 화면으로 이동"
+                                onClick={() => {
+                                  if (m.modelCode !== '수동추가') {
+                                    setSelectedMasterModelCode(m.modelCode)
+                                    setActiveTab('STEP4_MASTER')
+                                  }
+                                }}
+                                className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-100 font-semibold text-xs whitespace-nowrap transition-colors cursor-pointer"
                               >
-                                {m.modelCode}: {m.orderQty}대 → {m.subTotalQty} {part.unit}
-                              </span>
+                                {m.modelCode}: {m.orderQty}대 × 대당 {m.qtyPerUnit ?? 1}
+                                {part.unit} = {m.subTotalQty} {part.unit}
+                              </button>
                             ))}
                           </div>
                         </td>
@@ -3219,220 +3549,798 @@ function App() {
               </div>
             </section>
 
-            {/* 2. Standard Kiosk BOM Master Management (CRUD) */}
-            <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+            {/* 2. Kiosk Product (Model) & 10+ BOM Master Management (Full CRUD & Sync) */}
+            <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-6">
+              {/* Top Header */}
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-200 pb-4">
                 <div>
-                  <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
+                  <div className="flex items-center gap-2.5">
                     <Layers className="w-6 h-6 text-violet-600" />
-                    키오스크 모델별 표준 BOM 마스터 관리
-                  </h2>
+                    <h2 className="text-xl font-extrabold text-slate-900">
+                      키오스크 제품(모델) 및 모델별 표준 BOM 통합 마스터 관리
+                    </h2>
+                    <span className="px-3 py-0.5 rounded-full text-xs font-extrabold bg-violet-100 text-violet-800 border border-violet-200">
+                      등록 제품 {kioskModels.length}종
+                    </span>
+                  </div>
                   <p className="text-sm text-slate-500 mt-1">
-                    모델별 기본 구성 부품을 추가하거나 삭제할 수 있습니다.
+                    <strong>신제품 추가(10종 이상 무제한)</strong>, <strong>제품명·규격 수정</strong>,{' '}
+                    <strong>판매중·신제품·일시품절 상태 변경</strong> 및 각 모델에 들어가는{' '}
+                    <strong>10개 이상의 BOM 부품과 1대당 소요량</strong>을 관리합니다. (변경 시 전 단계에 즉시 반영)
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2 flex-wrap">
-                  {kioskModels.map((m) => (
-                    <button
-                      key={m.modelCode}
-                      type="button"
-                      onClick={() => setSelectedMasterModelCode(m.modelCode)}
-                      className={`px-4 py-2 rounded-xl text-sm font-bold cursor-pointer ${
-                        selectedMasterModelCode === m.modelCode
-                          ? 'bg-violet-600 text-white'
-                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                      }`}
-                    >
-                      {m.modelCode} ({m.bom.length}종)
-                    </button>
-                  ))}
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddModelForm((v) => !v)}
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-extrabold bg-indigo-600 hover:bg-indigo-500 text-white shadow-xs transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />+ 신제품(키오스크 모델) 추가
+                  </button>
                   <button
                     type="button"
                     onClick={() => setShowAddMasterBomForm((v) => !v)}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-extrabold bg-violet-600 hover:bg-violet-500 text-white shadow-xs transition-colors cursor-pointer"
                   >
-                    <Plus className="w-4 h-4" />+ 표준 BOM 부품 추가
+                    <Plus className="w-4 h-4" />+ [{selectedMasterModelCode}]에 신규 BOM 부품 추가
                   </button>
                 </div>
               </div>
 
-              {showAddMasterBomForm && (
-                <div className="p-5 rounded-2xl bg-violet-50/70 border border-violet-200 space-y-4">
-                  <div className="text-base font-extrabold text-violet-950">
-                    [{selectedMasterModelCode}] 모델에 표준 BOM 부품 추가
+              {/* Add New Kiosk Product Form */}
+              {showAddModelForm && (
+                <div className="p-5 rounded-2xl bg-indigo-50/80 border border-indigo-200 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="text-base font-extrabold text-indigo-950 flex items-center gap-2">
+                      <Cpu className="w-5 h-5 text-indigo-600" />
+                      신제품 (신규 키오스크 모델) 등록
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddModelForm(false)}
+                      className="text-slate-400 hover:text-slate-700 cursor-pointer"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
                   </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-sm">
-                    <input
-                      type="text"
-                      placeholder="부품코드"
-                      value={newMasterPart.partCode}
-                      onChange={(e) =>
-                        setNewMasterPart({ ...newMasterPart, partCode: e.target.value })
-                      }
-                      className="px-3 py-2.5 rounded-xl bg-white border border-violet-200"
-                    />
-                    <select
-                      value={newMasterPart.category}
-                      onChange={(e) =>
-                        setNewMasterPart({
-                          ...newMasterPart,
-                          category: e.target.value as PartCategory,
-                        })
-                      }
-                      className="px-3 py-2.5 rounded-xl bg-white border border-violet-200 font-bold"
-                    >
-                      {PART_CATEGORIES.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      type="text"
-                      placeholder="부품명 (필수)"
-                      value={newMasterPart.partName}
-                      onChange={(e) =>
-                        setNewMasterPart({ ...newMasterPart, partName: e.target.value })
-                      }
-                      className="sm:col-span-2 px-3 py-2.5 rounded-xl bg-white border border-violet-200 font-bold"
-                    />
-                    <input
-                      type="text"
-                      placeholder="상세 규격"
-                      value={newMasterPart.spec}
-                      onChange={(e) =>
-                        setNewMasterPart({ ...newMasterPart, spec: e.target.value })
-                      }
-                      className="sm:col-span-2 px-3 py-2.5 rounded-xl bg-white border border-violet-200"
-                    />
-                    <input
-                      type="number"
-                      min={1}
-                      placeholder="대당 소요량"
-                      value={newMasterPart.qtyPerUnit}
-                      onChange={(e) =>
-                        setNewMasterPart({
-                          ...newMasterPart,
-                          qtyPerUnit: Number(e.target.value) || 1,
-                        })
-                      }
-                      className="px-3 py-2.5 rounded-xl bg-white border border-violet-200 font-bold"
-                    />
-                    <select
-                      value={newMasterPart.supplierId}
-                      onChange={(e) =>
-                        setNewMasterPart({ ...newMasterPart, supplierId: e.target.value })
-                      }
-                      className="px-3 py-2.5 rounded-xl bg-white border border-violet-200 font-bold"
-                    >
-                      {supplierPartners.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name}
-                        </option>
-                      ))}
-                    </select>
+                    <div>
+                      <label className="block text-slate-700 font-semibold mb-1">
+                        모델코드 (미입력시 자동)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="예: KSK-3800A"
+                        value={newModelForm.modelCode}
+                        onChange={(e) =>
+                          setNewModelForm({ ...newModelForm, modelCode: e.target.value })
+                        }
+                        className="w-full px-3 py-2.5 rounded-xl bg-white border border-indigo-200 font-mono font-bold"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-slate-700 font-semibold mb-1">
+                        키오스크 제품명 (필수)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="예: AI 비전 무인 계산대 키오스크 38인치 (고급형)"
+                        value={newModelForm.modelName}
+                        onChange={(e) =>
+                          setNewModelForm({ ...newModelForm, modelName: e.target.value })
+                        }
+                        className="w-full px-3 py-2.5 rounded-xl bg-white border border-indigo-200 font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-700 font-semibold mb-1">초기 판매 상태</label>
+                      <select
+                        value={newModelForm.status}
+                        onChange={(e) =>
+                          setNewModelForm({
+                            ...newModelForm,
+                            status: e.target.value as KioskProductStatus,
+                          })
+                        }
+                        className="w-full px-3 py-2.5 rounded-xl bg-white border border-indigo-200 font-bold"
+                      >
+                        <option value="NEW">신제품 (NEW)</option>
+                        <option value="ACTIVE">정상 판매중 (ACTIVE)</option>
+                        <option value="SOLD_OUT">일시품절 (SOLD OUT)</option>
+                      </select>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-slate-700 font-semibold mb-1">
+                        제품 상세 규격 및 특징
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="예: 38인치 고휘도 터치 / 듀얼 카메라 / 고속 카드·QR·영수증 올인원"
+                        value={newModelForm.spec}
+                        onChange={(e) => setNewModelForm({ ...newModelForm, spec: e.target.value })}
+                        className="w-full px-3 py-2.5 rounded-xl bg-white border border-indigo-200"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-slate-700 font-semibold mb-1">
+                        기초 BOM 구성 복사해오기 (선택 모델의 10+개 BOM을 그대로 가져와 편집)
+                      </label>
+                      <select
+                        value={newModelForm.copyFromModelCode}
+                        onChange={(e) =>
+                          setNewModelForm({ ...newModelForm, copyFromModelCode: e.target.value })
+                        }
+                        className="w-full px-3 py-2.5 rounded-xl bg-white border border-indigo-200 font-semibold"
+                      >
+                        <option value="">빈 BOM으로 시작 (직접 0개부터 부품 추가)</option>
+                        {kioskModels.map((m) => (
+                          <option key={m.modelCode} value={m.modelCode}>
+                            [{m.modelCode}] {m.modelName} (BOM {m.bom.length}종 복사)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
+
                   <div className="flex justify-end gap-2">
                     <button
                       type="button"
-                      onClick={() => setShowAddMasterBomForm(false)}
+                      onClick={() => setShowAddModelForm(false)}
                       className="px-4 py-2 rounded-xl text-sm font-semibold bg-white border border-slate-300 cursor-pointer"
                     >
                       취소
                     </button>
                     <button
                       type="button"
-                      onClick={handleAddMasterBomPart}
-                      className="px-5 py-2 rounded-xl text-sm font-bold bg-violet-600 text-white cursor-pointer"
+                      onClick={handleCreateKioskModel}
+                      className="px-5 py-2 rounded-xl text-sm font-extrabold bg-indigo-600 text-white cursor-pointer"
                     >
-                      표준 BOM에 저장
+                      신제품 등록 완료
                     </button>
                   </div>
                 </div>
               )}
 
-              {kioskModels
-                .filter((m) => m.modelCode === selectedMasterModelCode)
-                .map((model) => (
-                  <div
-                    key={model.modelCode}
-                    className="rounded-xl border border-slate-200 overflow-hidden"
-                  >
-                    <div className="px-5 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-                      <div>
-                        <span className="px-2.5 py-1 rounded-md text-xs font-mono font-bold bg-violet-100 text-violet-700 mr-2">
-                          {model.modelCode}
+              {/* Kiosk Models Filter & Search Bar */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {(
+                    [
+                      { key: 'ALL', label: `전체 제품 (${kioskModels.length})` },
+                      {
+                        key: 'ACTIVE',
+                        label: `판매중 (${kioskModels.filter((m) => (m.status || 'ACTIVE') === 'ACTIVE').length})`,
+                      },
+                      {
+                        key: 'NEW',
+                        label: `신제품 (${kioskModels.filter((m) => m.status === 'NEW').length})`,
+                      },
+                      {
+                        key: 'SOLD_OUT',
+                        label: `일시품절 (${kioskModels.filter((m) => m.status === 'SOLD_OUT').length})`,
+                      },
+                    ] as const
+                  ).map((tab) => (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => setModelStatusFilter(tab.key)}
+                      className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-colors cursor-pointer ${
+                        modelStatusFilter === tab.key
+                          ? 'bg-slate-900 text-white'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="relative w-full md:w-72">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="모델코드, 제품명 검색..."
+                    value={modelSearch}
+                    onChange={(e) => setModelSearch(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-300 text-sm focus:outline-none focus:border-violet-500 focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* Kiosk Models Grid Selector (Clean 3-4 cols for 10+ models) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                {filteredMasterModels.map((m) => {
+                  const isSelected = selectedMasterModelCode === m.modelCode
+                  const status = m.status || 'ACTIVE'
+                  return (
+                    <div
+                      key={m.modelCode}
+                      onClick={() => setSelectedMasterModelCode(m.modelCode)}
+                      className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 ${
+                        isSelected
+                          ? 'bg-violet-50/90 border-2 border-violet-600 shadow-xs'
+                          : 'bg-white hover:bg-slate-50 border-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span
+                          className={`px-2 py-0.5 rounded font-mono text-xs font-extrabold ${
+                            isSelected
+                              ? 'bg-violet-600 text-white'
+                              : 'bg-slate-100 text-slate-700'
+                          }`}
+                        >
+                          {m.modelCode}
                         </span>
-                        <strong className="text-base font-extrabold text-slate-900">
-                          {model.modelName}
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[11px] font-extrabold ${
+                            status === 'NEW'
+                              ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+                              : status === 'SOLD_OUT'
+                                ? 'bg-rose-100 text-rose-700 border border-rose-200'
+                                : 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                          }`}
+                        >
+                          {status === 'NEW'
+                            ? '신제품'
+                            : status === 'SOLD_OUT'
+                              ? '일시품절'
+                              : '판매중'}
+                        </span>
+                      </div>
+                      <div className="font-bold text-slate-900 text-sm line-clamp-1">
+                        {m.modelName}
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-slate-200/70">
+                        <span>구성 BOM 부품</span>
+                        <strong className="text-violet-700 font-extrabold">
+                          총 {m.bom.length}종 (대당 {m.bom.reduce((s, b) => s + b.qtyPerUnit, 0)}개)
                         </strong>
-                        <p className="text-sm text-slate-500 mt-0.5">{model.spec}</p>
                       </div>
                     </div>
+                  )
+                })}
+              </div>
 
-                    <div className="overflow-x-auto">
-                      <table className="w-full min-w-[900px] text-left border-collapse text-sm">
-                        <thead>
-                          <tr className="bg-slate-100 text-slate-700 border-b border-slate-200 whitespace-nowrap">
-                            <th className="py-3 px-4 font-bold">부품코드</th>
-                            <th className="py-3 px-4 font-bold">카테고리</th>
-                            <th className="py-3 px-4 font-bold">부품명 / 규격</th>
-                            <th className="py-3 px-4 text-center font-bold">대당 소요량</th>
-                            <th className="py-3 px-4 text-center font-bold">창고 현재고</th>
-                            <th className="py-3 px-4 font-bold">지정 발주처</th>
-                            <th className="py-3 px-3 text-center font-bold w-16">삭제</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-200">
-                          {model.bom.map((part) => (
-                            <tr key={part.partCode} className="hover:bg-slate-50">
-                              <td className="py-3.5 px-4 font-mono text-indigo-600 font-bold whitespace-nowrap">
-                                {part.partCode}
-                              </td>
-                              <td className="py-3.5 px-4 whitespace-nowrap">
-                                <span className="px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold text-xs whitespace-nowrap">
-                                  {part.category}
-                                </span>
-                              </td>
-                              <td className="py-3.5 px-4 break-keep">
-                                <div className="font-bold text-slate-900">{part.partName}</div>
-                                <div className="text-xs text-slate-500">{part.spec}</div>
-                              </td>
-                              <td className="py-3.5 px-4 text-center font-extrabold text-slate-900 whitespace-nowrap">
-                                {part.qtyPerUnit} {part.unit}
-                              </td>
-                              <td className="py-3.5 px-4 text-center text-emerald-600 font-bold whitespace-nowrap">
-                                {part.stockQty} {part.unit}
-                              </td>
-                              <td className="py-3.5 px-4 whitespace-nowrap">
-                                <div className="font-bold text-slate-800">{part.supplierName}</div>
-                                <div className="text-xs text-slate-500">
-                                  {part.supplierManager} ({part.supplierPhone})
-                                </div>
-                              </td>
-                              <td className="py-3.5 px-3 text-center">
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    handleDeleteMasterBomPart(
+              {/* Selected Model Details & BOM Management Area */}
+              {kioskModels
+                .filter((m) => m.modelCode === selectedMasterModelCode)
+                .map((model) => {
+                  const isEditingModel = editingModelCode === model.modelCode
+                  const modelStatus = model.status || 'ACTIVE'
+                  const visibleBom =
+                    masterBomCategoryFilter === '전체'
+                      ? model.bom
+                      : model.bom.filter((b) => b.category === masterBomCategoryFilter)
+
+                  return (
+                    <div
+                      key={model.modelCode}
+                      className="rounded-2xl border-2 border-violet-200 overflow-hidden bg-white space-y-0"
+                    >
+                      {/* Selected Model Header & Product Info Editor */}
+                      <div className="p-5 bg-violet-50/70 border-b border-violet-200 space-y-4">
+                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                          <div className="space-y-1.5 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="px-3 py-1 rounded-lg text-sm font-mono font-extrabold bg-violet-600 text-white">
+                                {model.modelCode}
+                              </span>
+                              {isEditingModel ? (
+                                <input
+                                  type="text"
+                                  value={model.modelName}
+                                  onChange={(e) =>
+                                    handleUpdateKioskModel(
                                       model.modelCode,
-                                      part.partCode,
-                                      part.partName
+                                      'modelName',
+                                      e.target.value
                                     )
                                   }
-                                  className="p-2 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 cursor-pointer"
+                                  className="px-3 py-1.5 rounded-xl bg-white border border-violet-400 font-extrabold text-slate-900 text-base w-full sm:w-96"
+                                />
+                              ) : (
+                                <strong className="text-lg font-extrabold text-slate-900">
+                                  {model.modelName}
+                                </strong>
+                              )}
+                              <span className="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-white text-violet-700 border border-violet-200">
+                                표준 BOM 총 {model.bom.length}종 부품
+                              </span>
+                            </div>
+
+                            {isEditingModel ? (
+                              <input
+                                type="text"
+                                value={model.spec}
+                                onChange={(e) =>
+                                  handleUpdateKioskModel(model.modelCode, 'spec', e.target.value)
+                                }
+                                className="w-full px-3 py-1.5 rounded-xl bg-white border border-violet-400 text-sm text-slate-700"
+                              />
+                            ) : (
+                              <p className="text-sm text-slate-600">{model.spec}</p>
+                            )}
+                          </div>
+
+                          {/* Product Status Switcher & Model Edit/Delete Actions */}
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="inline-flex items-center rounded-xl bg-white p-1 border border-slate-200">
+                              {(
+                                [
+                                  { code: 'ACTIVE', label: '정상 판매중' },
+                                  { code: 'NEW', label: '신제품' },
+                                  { code: 'SOLD_OUT', label: '일시품절' },
+                                ] as const
+                              ).map((st) => (
+                                <button
+                                  key={st.code}
+                                  type="button"
+                                  onClick={() =>
+                                    handleUpdateKioskModel(model.modelCode, 'status', st.code)
+                                  }
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-colors cursor-pointer ${
+                                    modelStatus === st.code
+                                      ? st.code === 'SOLD_OUT'
+                                        ? 'bg-rose-600 text-white'
+                                        : st.code === 'NEW'
+                                          ? 'bg-indigo-600 text-white'
+                                          : 'bg-emerald-600 text-white'
+                                      : 'text-slate-600 hover:bg-slate-100'
+                                  }`}
                                 >
-                                  <Trash2 className="w-4 h-4" />
+                                  {st.label}
                                 </button>
-                              </td>
+                              ))}
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setEditingModelCode(isEditingModel ? null : model.modelCode)
+                              }
+                              className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
+                                isEditingModel
+                                  ? 'bg-emerald-600 text-white border-emerald-600'
+                                  : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
+                              }`}
+                            >
+                              {isEditingModel ? (
+                                <>
+                                  <Check className="w-3.5 h-3.5" />
+                                  제품 정보 수정 완료
+                                </>
+                              ) : (
+                                <>
+                                  <Pencil className="w-3.5 h-3.5" />
+                                  제품명·규격 수정
+                                </>
+                              )}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleDeleteKioskModel(model.modelCode, model.modelName)
+                              }
+                              className="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              제품 삭제
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Quick Bar: Add from Existing Warehouse Inventory OR New Part */}
+                        <div className="pt-3 border-t border-violet-200/80 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                          <div className="flex flex-wrap items-center gap-2 flex-1">
+                            <span className="text-xs font-extrabold text-violet-900 whitespace-nowrap">
+                              • 창고 기존 부품에서 골라 BOM에 넣기:
+                            </span>
+                            <select
+                              value={selectedExistingPartCode}
+                              onChange={(e) => setSelectedExistingPartCode(e.target.value)}
+                              className="px-3 py-2 rounded-xl bg-white border border-violet-300 text-xs sm:text-sm font-semibold text-slate-800 flex-1 min-w-[240px]"
+                            >
+                              <option value="">
+                                -- 창고에 등록된 부품 선택 (총 {warehouseInventory.length}종) --
+                              </option>
+                              {warehouseInventory.map((wp) => (
+                                <option key={wp.partCode} value={wp.partCode}>
+                                  [{wp.partCode}] {wp.partName} (현재고: {wp.stockQty}
+                                  {wp.unit} / {wp.supplierName})
+                                </option>
+                              ))}
+                            </select>
+                            <div className="inline-flex items-center gap-1 bg-white px-2.5 py-1.5 rounded-xl border border-violet-300">
+                              <span className="text-xs font-bold text-slate-600">1대당 소요량:</span>
+                              <input
+                                type="number"
+                                min={1}
+                                value={existingPartAddQty}
+                                onChange={(e) =>
+                                  setExistingPartAddQty(Math.max(1, Number(e.target.value) || 1))
+                                }
+                                className="w-14 text-center font-extrabold text-sm text-violet-900 focus:outline-none"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleAddExistingPartToModelBom}
+                              className="px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold bg-violet-600 hover:bg-violet-500 text-white cursor-pointer whitespace-nowrap"
+                            >
+                              + 이 모델 BOM에 연결
+                            </button>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {CATEGORIES.map((cat) => (
+                              <button
+                                key={cat}
+                                type="button"
+                                onClick={() => setMasterBomCategoryFilter(cat)}
+                                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold cursor-pointer ${
+                                  masterBomCategoryFilter === cat
+                                    ? 'bg-violet-700 text-white'
+                                    : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                                }`}
+                              >
+                                {cat}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Add Brand-New Master BOM Part Form */}
+                      {showAddMasterBomForm && (
+                        <div className="p-5 bg-emerald-50/70 border-b border-emerald-200 space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div className="text-base font-extrabold text-emerald-950">
+                              [{model.modelCode}] 모델에 새로운 BOM 부품 직접 등록 (창고 재고에도 자동 추가됨)
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setShowAddMasterBomForm(false)}
+                              className="text-slate-400 hover:text-slate-700 cursor-pointer"
+                            >
+                              <X className="w-5 h-5" />
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-sm">
+                            <input
+                              type="text"
+                              placeholder="부품코드 (미입력시 자동)"
+                              value={newMasterPart.partCode}
+                              onChange={(e) =>
+                                setNewMasterPart({ ...newMasterPart, partCode: e.target.value })
+                              }
+                              className="px-3 py-2.5 rounded-xl bg-white border border-emerald-300 font-mono"
+                            />
+                            <select
+                              value={newMasterPart.category}
+                              onChange={(e) =>
+                                setNewMasterPart({
+                                  ...newMasterPart,
+                                  category: e.target.value as PartCategory,
+                                })
+                              }
+                              className="px-3 py-2.5 rounded-xl bg-white border border-emerald-300 font-bold"
+                            >
+                              {PART_CATEGORIES.map((c) => (
+                                <option key={c} value={c}>
+                                  {c}
+                                </option>
+                              ))}
+                            </select>
+                            <input
+                              type="text"
+                              placeholder="부품명 (필수)"
+                              value={newMasterPart.partName}
+                              onChange={(e) =>
+                                setNewMasterPart({ ...newMasterPart, partName: e.target.value })
+                              }
+                              className="sm:col-span-2 px-3 py-2.5 rounded-xl bg-white border border-emerald-300 font-bold"
+                            />
+                            <input
+                              type="text"
+                              placeholder="상세 규격"
+                              value={newMasterPart.spec}
+                              onChange={(e) =>
+                                setNewMasterPart({ ...newMasterPart, spec: e.target.value })
+                              }
+                              className="sm:col-span-2 px-3 py-2.5 rounded-xl bg-white border border-emerald-300"
+                            />
+                            <div className="flex gap-1.5">
+                              <input
+                                type="number"
+                                min={1}
+                                placeholder="1대당 소요량"
+                                value={newMasterPart.qtyPerUnit}
+                                onChange={(e) =>
+                                  setNewMasterPart({
+                                    ...newMasterPart,
+                                    qtyPerUnit: Number(e.target.value) || 1,
+                                  })
+                                }
+                                className="w-1/2 px-3 py-2.5 rounded-xl bg-white border border-emerald-300 font-bold"
+                              />
+                              <input
+                                type="number"
+                                min={0}
+                                placeholder="기초 현재고"
+                                value={newMasterPart.stockQty}
+                                onChange={(e) =>
+                                  setNewMasterPart({
+                                    ...newMasterPart,
+                                    stockQty: Number(e.target.value) || 0,
+                                  })
+                                }
+                                className="w-1/2 px-3 py-2.5 rounded-xl bg-white border border-emerald-300 font-bold"
+                              />
+                            </div>
+                            <select
+                              value={newMasterPart.supplierId}
+                              onChange={(e) =>
+                                setNewMasterPart({ ...newMasterPart, supplierId: e.target.value })
+                              }
+                              className="px-3 py-2.5 rounded-xl bg-white border border-emerald-300 font-bold"
+                            >
+                              {supplierPartners.map((s) => (
+                                <option key={s.id} value={s.id}>
+                                  {s.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="flex justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setShowAddMasterBomForm(false)}
+                              className="px-4 py-2 rounded-xl text-sm font-semibold bg-white border border-slate-300 cursor-pointer"
+                            >
+                              취소
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleAddMasterBomPart}
+                              className="px-5 py-2 rounded-xl text-sm font-bold bg-emerald-600 text-white cursor-pointer"
+                            >
+                              표준 BOM에 저장
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Model's 10+ BOM Parts Table (Editable qtyPerUnit, Spec, Supplier, Stock) */}
+                      <div className="overflow-x-auto">
+                        <table className="w-full min-w-[1000px] text-left border-collapse text-sm">
+                          <thead>
+                            <tr className="bg-slate-100 text-slate-700 border-b border-slate-200 whitespace-nowrap">
+                              <th className="py-3 px-4 font-bold w-[60px] text-center">No</th>
+                              <th className="py-3 px-4 font-bold w-[150px]">부품코드 / 카테고리</th>
+                              <th className="py-3 px-4 font-bold min-w-[240px]">부품명 및 상세 규격</th>
+                              <th className="py-3 px-4 text-center font-bold w-[170px]">
+                                1대당 소요량 (실시간 연동)
+                              </th>
+                              <th className="py-3 px-4 text-center font-bold w-[130px]">
+                                창고 현재고
+                              </th>
+                              <th className="py-3 px-4 font-bold min-w-[200px]">지정 발주처</th>
+                              <th className="py-3 px-3 text-center font-bold w-[96px]">수정·삭제</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody className="divide-y divide-slate-200">
+                            {visibleBom.map((part, idx) => {
+                              const editKey = `${model.modelCode}:${part.partCode}`
+                              const isPartEditing = editingMasterPartCode === editKey
+                              return (
+                                <tr key={part.partCode} className="hover:bg-slate-50/90">
+                                  <td className="py-3.5 px-4 text-center font-mono text-xs font-bold text-slate-400">
+                                    {idx + 1}
+                                  </td>
+                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                    <div className="font-mono text-indigo-600 font-bold">
+                                      {part.partCode}
+                                    </div>
+                                    <span className="inline-block mt-1 px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold text-xs whitespace-nowrap">
+                                      {part.category}
+                                    </span>
+                                  </td>
+                                  <td className="py-3.5 px-4 break-keep">
+                                    {isPartEditing ? (
+                                      <div className="space-y-1.5">
+                                        <input
+                                          type="text"
+                                          value={part.partName}
+                                          onChange={(e) =>
+                                            handleUpdateMasterBomPart(
+                                              model.modelCode,
+                                              part.partCode,
+                                              'partName',
+                                              e.target.value
+                                            )
+                                          }
+                                          className="w-full px-2.5 py-1 rounded-lg bg-white border border-violet-400 font-bold text-slate-900"
+                                        />
+                                        <input
+                                          type="text"
+                                          value={part.spec}
+                                          onChange={(e) =>
+                                            handleUpdateMasterBomPart(
+                                              model.modelCode,
+                                              part.partCode,
+                                              'spec',
+                                              e.target.value
+                                            )
+                                          }
+                                          className="w-full px-2.5 py-1 rounded-lg bg-white border border-slate-300 text-xs text-slate-700"
+                                        />
+                                      </div>
+                                    ) : (
+                                      <>
+                                        <div className="font-bold text-slate-900">
+                                          {part.partName}
+                                        </div>
+                                        <div className="text-xs text-slate-500">{part.spec}</div>
+                                      </>
+                                    )}
+                                  </td>
+                                  <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                                    <div className="inline-flex items-center justify-center gap-1.5">
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          handleUpdateMasterBomPart(
+                                            model.modelCode,
+                                            part.partCode,
+                                            'qtyPerUnit',
+                                            Math.max(1, part.qtyPerUnit - 1)
+                                          )
+                                        }
+                                        className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold border border-slate-300 cursor-pointer"
+                                      >
+                                        -
+                                      </button>
+                                      <input
+                                        type="number"
+                                        min={1}
+                                        value={part.qtyPerUnit}
+                                        onChange={(e) =>
+                                          handleUpdateMasterBomPart(
+                                            model.modelCode,
+                                            part.partCode,
+                                            'qtyPerUnit',
+                                            Math.max(1, Number(e.target.value) || 1)
+                                          )
+                                        }
+                                        className="w-14 text-center py-1 rounded-lg bg-violet-50 border border-violet-300 font-black text-violet-950 text-sm"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          handleUpdateMasterBomPart(
+                                            model.modelCode,
+                                            part.partCode,
+                                            'qtyPerUnit',
+                                            part.qtyPerUnit + 1
+                                          )
+                                        }
+                                        className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold border border-slate-300 cursor-pointer"
+                                      >
+                                        +
+                                      </button>
+                                      <span className="text-xs font-bold text-slate-500">
+                                        {part.unit}
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                                    {isPartEditing ? (
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        value={part.stockQty}
+                                        onChange={(e) =>
+                                          handleUpdateMasterBomPart(
+                                            model.modelCode,
+                                            part.partCode,
+                                            'stockQty',
+                                            Math.max(0, Number(e.target.value) || 0)
+                                          )
+                                        }
+                                        className="w-16 text-center py-1 rounded-lg bg-emerald-50 border border-emerald-400 font-bold text-emerald-900"
+                                      />
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        title="클릭하여 창고 재고 관리 탭으로 이동"
+                                        onClick={() => setActiveTab('STEP4_INVENTORY')}
+                                        className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-mono font-bold text-xs cursor-pointer"
+                                      >
+                                        {part.stockQty} {part.unit}
+                                      </button>
+                                    )}
+                                  </td>
+                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                    {isPartEditing ? (
+                                      <select
+                                        value={part.supplierId}
+                                        onChange={(e) =>
+                                          handleUpdateMasterBomPart(
+                                            model.modelCode,
+                                            part.partCode,
+                                            'supplierId',
+                                            e.target.value
+                                          )
+                                        }
+                                        className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-violet-400 font-bold text-slate-900 text-xs"
+                                      >
+                                        {supplierPartners.map((s) => (
+                                          <option key={s.id} value={s.id}>
+                                            {s.name}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    ) : (
+                                      <>
+                                        <div className="font-bold text-slate-800">
+                                          {part.supplierName}
+                                        </div>
+                                        <div className="text-xs text-slate-500">
+                                          {part.supplierManager} ({part.supplierPhone})
+                                        </div>
+                                      </>
+                                    )}
+                                  </td>
+                                  <td className="py-3.5 px-3 text-center whitespace-nowrap">
+                                    <div className="flex items-center justify-center gap-1">
+                                      <button
+                                        type="button"
+                                        title={isPartEditing ? '수정 완료' : '부품 상세 수정'}
+                                        onClick={() =>
+                                          setEditingMasterPartCode(isPartEditing ? null : editKey)
+                                        }
+                                        className={`p-2 rounded-lg transition-colors cursor-pointer ${
+                                          isPartEditing
+                                            ? 'bg-emerald-600 text-white'
+                                            : 'hover:bg-violet-100 text-slate-500 hover:text-violet-700'
+                                        }`}
+                                      >
+                                        {isPartEditing ? (
+                                          <Check className="w-4 h-4" />
+                                        ) : (
+                                          <Pencil className="w-4 h-4" />
+                                        )}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        title="이 모델 BOM에서 제거"
+                                        onClick={() =>
+                                          handleDeleteMasterBomPart(
+                                            model.modelCode,
+                                            part.partCode,
+                                            part.partName
+                                          )
+                                        }
+                                        className="p-2 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 cursor-pointer"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
             </section>
           </div>
         )}

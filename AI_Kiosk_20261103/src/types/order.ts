@@ -59,15 +59,24 @@ export interface BomPart {
   leadTimeDays: number
 }
 
+export type KioskProductStatus = 'ACTIVE' | 'NEW' | 'SOLD_OUT'
+
 export interface KioskModelMaster {
   modelCode: string
   modelName: string
   spec: string
+  status?: KioskProductStatus
   bom: BomPart[]
 }
 
 export interface ExpandedBomItem extends BomPart {
-  sourceModels: { modelCode: string; modelName: string; orderQty: number; subTotalQty: number }[]
+  sourceModels: {
+    modelCode: string
+    modelName: string
+    orderQty: number
+    qtyPerUnit?: number
+    subTotalQty: number
+  }[]
   grossRequiredQty: number
   netOrderQty: number
   adjustedOrderQty: number

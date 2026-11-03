@@ -34,6 +34,7 @@ export function expandBomFromOrder(
           modelCode: matchedModel.modelCode,
           modelName: matchedModel.modelName,
           orderQty: item.quantity,
+          qtyPerUnit: part.qtyPerUnit,
           subTotalQty,
         })
       } else {
@@ -44,6 +45,7 @@ export function expandBomFromOrder(
               modelCode: matchedModel.modelCode,
               modelName: matchedModel.modelName,
               orderQty: item.quantity,
+              qtyPerUnit: part.qtyPerUnit,
               subTotalQty,
             },
           ],
