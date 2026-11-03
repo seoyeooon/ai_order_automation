@@ -91,3 +91,16 @@ export interface GeneratedPurchaseOrder {
   excelFileName: string
   status: 'READY' | 'DOWNLOADED' | 'SENT'
 }
+
+export interface InventoryLogItem {
+  id: string
+  timestamp: string
+  type: 'IN' | 'OUT' | 'ADJUST'
+  partCode: string
+  partName: string
+  changeQty: number
+  afterStockQty: number
+  unit: string
+  note: string
+}
+

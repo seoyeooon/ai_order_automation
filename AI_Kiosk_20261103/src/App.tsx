@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import {
+  AlertTriangle,
   ArrowRight,
   Boxes,
   Building2,
@@ -13,12 +14,16 @@ import {
   FileCheck2,
   FileSpreadsheet,
   FileText,
+  History,
   Layers,
+  Package,
+  PackageCheck,
   Pencil,
   Plus,
   Printer,
   RefreshCw,
   ScanLine,
+  Search,
   Send,
   Sparkles,
   Trash2,
@@ -33,6 +38,7 @@ import type {
   ClientOrder,
   ExpandedBomItem,
   GeneratedPurchaseOrder,
+  InventoryLogItem,
   KioskModelMaster,
   PartCategory,
   PartnerCompany,
@@ -45,7 +51,7 @@ import {
 } from './utils/orderUtils'
 import { parseUploadedOrderDocument } from './utils/documentParser'
 
-type ActiveTab = 'STEP1_SCAN' | 'STEP2_BOM' | 'STEP3_PO' | 'STEP4_MASTER'
+type ActiveTab = 'STEP1_SCAN' | 'STEP2_BOM' | 'STEP3_PO' | 'STEP4_INVENTORY' | 'STEP4_MASTER'
 
 const CATEGORIES: ('전체' | PartCategory)[] = [
   '전체',
@@ -127,6 +133,74 @@ function App() {
   // Step 3: PO Modal & Download states
   const [previewPo, setPreviewPo] = useState<GeneratedPurchaseOrder | null>(null)
   const [poStatusMap, setPoStatusMap] = useState<Record<string, 'READY' | 'DOWNLOADED' | 'SENT'>>({})
+  const [poReceivedMap, setPoReceivedMap] = useState<Record<string, boolean>>({})
+
+  // Step 4 (Inventory): Warehouse Inventory Management states
+  const [inventoryCategory, setInventoryCategory] = useState<'전체' | PartCategory>('전체')
+  const [inventoryStatusFilter, setInventoryStatusFilter] = useState<
+    'ALL' | 'NORMAL' | 'LOW' | 'EMPTY'
+  >('ALL')
+  const [inventorySearch, setInventorySearch] = useState<string>('')
+  const [safetyStockMap, setSafetyStockMap] = useState<Record<string, number>>({
+    'DSP-32-4K': 5,
+    'CPU-I5-12G': 5,
+    'PAY-IC-EMV': 5,
+    'PRT-3IN-80': 5,
+    'SCN-2D-QR': 5,
+    'ENC-32-STL': 3,
+    'PWR-SMPS-24': 8,
+    'NET-ROUT-5G': 5,
+    'DSP-24-FHD': 5,
+    'CPU-J6412': 5,
+    'ENC-24-DSK': 3,
+  })
+  const [customInventoryParts, setCustomInventoryParts] = useState<BomPart[]>([])
+  const [showAddInventoryPartForm, setShowAddInventoryPartForm] = useState<boolean>(false)
+  const [newInventoryPart, setNewInventoryPart] = useState({
+    partCode: '',
+    partName: '',
+    category: '디스플레이/터치' as PartCategory,
+    spec: '',
+    unit: 'EA',
+    stockQty: 10,
+    safetyStockQty: 5,
+    supplierId: 'SUP-01',
+  })
+  const [inventoryLogs, setInventoryLogs] = useState<InventoryLogItem[]>([
+    {
+      id: 'LOG-103',
+      timestamp: '2026-11-03 09:30',
+      type: 'IN',
+      partCode: 'PWR-SMPS-24',
+      partName: '듀얼 채널 산업용 SMPS 파워서플라이',
+      changeQty: 12,
+      afterStockQty: 12,
+      unit: 'EA',
+      note: '정기 안전재고 보충 입고 ((주)대성파워일렉트로닉스)',
+    },
+    {
+      id: 'LOG-102',
+      timestamp: '2026-11-02 16:15',
+      partCode: 'PRT-3IN-80',
+      partName: '3인치 고속 감열식 영수증 프린터 모듈',
+      type: 'IN',
+      changeQty: 8,
+      afterStockQty: 8,
+      unit: 'EA',
+      note: '창고 실사 및 기초 재고 등록',
+    },
+    {
+      id: 'LOG-101',
+      timestamp: '2026-11-02 14:00',
+      partCode: 'DSP-32-4K',
+      partName: '32인치 4K 정전식 터치 디스플레이 모듈',
+      type: 'OUT',
+      changeQty: -2,
+      afterStockQty: 4,
+      unit: 'EA',
+      note: '샘플 쇼룸 키오스크 2대 조립 출고',
+    },
+  ])
 
   // Step 4: Master management states
   const [editingPartnerId, setEditingPartnerId] = useState<string | null>(null)
@@ -283,6 +357,281 @@ function App() {
     () => clientOrder.items.reduce((sum, item) => sum + item.quantity, 0),
     [clientOrder.items]
   )
+
+  // Unified Warehouse Inventory Derivation (100% synced with STEP 2 BOM & STEP 5 Master)
+  const warehouseInventory = useMemo(() => {
+    const map = new Map<
+      string,
+      BomPart & {
+        usedInModels: string[]
+        currentReqQty: number
+        safetyStockQty: number
+        stockStatus: 'NORMAL' | 'LOW' | 'EMPTY'
+      }
+    >()
+
+    const reqMap = new Map<string, number>()
+    for (const bomItem of expandedBom) {
+      reqMap.set(bomItem.partCode, bomItem.grossRequiredQty)
+    }
+
+    for (const model of kioskModels) {
+      for (const part of model.bom) {
+        const editStock = partEdits[part.partCode]?.stockQty
+        const effectiveStock = editStock !== undefined ? editStock : part.stockQty
+        const safety = safetyStockMap[part.partCode] ?? 5
+        const status: 'NORMAL' | 'LOW' | 'EMPTY' =
+          effectiveStock <= 0 ? 'EMPTY' : effectiveStock < safety ? 'LOW' : 'NORMAL'
+
+        const existing = map.get(part.partCode)
+        if (existing) {
+          if (!existing.usedInModels.includes(model.modelCode)) {
+            existing.usedInModels.push(model.modelCode)
+          }
+        } else {
+          map.set(part.partCode, {
+            ...part,
+            stockQty: effectiveStock,
+            usedInModels: [model.modelCode],
+            currentReqQty: reqMap.get(part.partCode) || 0,
+            safetyStockQty: safety,
+            stockStatus: status,
+          })
+        }
+      }
+    }
+
+    for (const custom of [...customAddedBom, ...customInventoryParts]) {
+      if (!map.has(custom.partCode)) {
+        const editStock = partEdits[custom.partCode]?.stockQty
+        const effectiveStock = editStock !== undefined ? editStock : custom.stockQty
+        const safety = safetyStockMap[custom.partCode] ?? 5
+        const status: 'NORMAL' | 'LOW' | 'EMPTY' =
+          effectiveStock <= 0 ? 'EMPTY' : effectiveStock < safety ? 'LOW' : 'NORMAL'
+
+        map.set(custom.partCode, {
+          ...custom,
+          stockQty: effectiveStock,
+          usedInModels: ['수동등록'],
+          currentReqQty: reqMap.get(custom.partCode) || 0,
+          safetyStockQty: safety,
+          stockStatus: status,
+        })
+      }
+    }
+
+    return Array.from(map.values())
+  }, [kioskModels, customAddedBom, customInventoryParts, expandedBom, partEdits, safetyStockMap])
+
+  const inventoryStats = useMemo(() => {
+    const total = warehouseInventory.length
+    const normal = warehouseInventory.filter((p) => p.stockStatus === 'NORMAL').length
+    const low = warehouseInventory.filter((p) => p.stockStatus === 'LOW').length
+    const empty = warehouseInventory.filter((p) => p.stockStatus === 'EMPTY').length
+    return { total, normal, low, empty, alertCount: low + empty }
+  }, [warehouseInventory])
+
+  const filteredWarehouseInventory = useMemo(() => {
+    return warehouseInventory.filter((item) => {
+      if (inventoryCategory !== '전체' && item.category !== inventoryCategory) return false
+      if (inventoryStatusFilter !== 'ALL' && item.stockStatus !== inventoryStatusFilter)
+        return false
+      if (inventorySearch.trim()) {
+        const q = inventorySearch.trim().toLowerCase()
+        const matchCode = item.partCode.toLowerCase().includes(q)
+        const matchName = item.partName.toLowerCase().includes(q)
+        const matchSupplier = item.supplierName.toLowerCase().includes(q)
+        if (!matchCode && !matchName && !matchSupplier) return false
+      }
+      return true
+    })
+  }, [warehouseInventory, inventoryCategory, inventoryStatusFilter, inventorySearch])
+
+  const formatNowTimestamp = () => {
+    const now = new Date()
+    const yyyy = now.getFullYear()
+    const mm = String(now.getMonth() + 1).padStart(2, '0')
+    const dd = String(now.getDate()).padStart(2, '0')
+    const hh = String(now.getHours()).padStart(2, '0')
+    const mi = String(now.getMinutes()).padStart(2, '0')
+    return `${yyyy}-${mm}-${dd} ${hh}:${mi}`
+  }
+
+  // Synchronized Warehouse Stock Updater
+  const handleAdjustWarehouseStock = (
+    partCode: string,
+    nextStockQty: number,
+    note: string,
+    explicitType?: 'IN' | 'OUT' | 'ADJUST'
+  ) => {
+    const clamped = Math.max(0, Math.round(nextStockQty))
+    const target = warehouseInventory.find((p) => p.partCode === partCode)
+    const prevStock = target ? target.stockQty : 0
+    const diff = clamped - prevStock
+    if (diff === 0) return
+
+    // 1. Update kioskModels BOM
+    setKioskModels((prev) =>
+      prev.map((m) => ({
+        ...m,
+        bom: m.bom.map((b) => (b.partCode === partCode ? { ...b, stockQty: clamped } : b)),
+      }))
+    )
+
+    // 2. Update customAddedBom & customInventoryParts
+    setCustomAddedBom((prev) =>
+      prev.map((b) => (b.partCode === partCode ? { ...b, stockQty: clamped } : b))
+    )
+    setCustomInventoryParts((prev) =>
+      prev.map((b) => (b.partCode === partCode ? { ...b, stockQty: clamped } : b))
+    )
+
+    // 3. Sync partEdits so STEP 2 expandedBom immediately uses the updated stock
+    setPartEdits((prev) => {
+      if (!prev[partCode]) return prev
+      return {
+        ...prev,
+        [partCode]: {
+          ...prev[partCode],
+          stockQty: clamped,
+        },
+      }
+    })
+
+    // 4. Record Inventory Log
+    const logType: 'IN' | 'OUT' | 'ADJUST' =
+      explicitType || (diff > 0 ? 'IN' : diff < 0 ? 'OUT' : 'ADJUST')
+
+    const newLog: InventoryLogItem = {
+      id: `LOG-${Date.now()}-${Math.floor(Math.random() * 100)}`,
+      timestamp: formatNowTimestamp(),
+      type: logType,
+      partCode,
+      partName: target?.partName || partCode,
+      changeQty: diff,
+      afterStockQty: clamped,
+      unit: target?.unit || 'EA',
+      note,
+    }
+    setInventoryLogs((prev) => [newLog, ...prev.slice(0, 29)])
+  }
+
+  const handleAddWarehousePart = () => {
+    if (!newInventoryPart.partName.trim()) {
+      showToast('부품명을 입력해 주세요.')
+      return
+    }
+    const sup =
+      supplierPartners.find((s) => s.id === newInventoryPart.supplierId) || supplierPartners[0]
+    const code =
+      newInventoryPart.partCode.trim() || `INV-${Math.floor(100 + Math.random() * 899)}`
+
+    const created: BomPart = {
+      partCode: code,
+      partName: newInventoryPart.partName.trim(),
+      category: newInventoryPart.category,
+      spec: newInventoryPart.spec.trim() || '창고 재고 관리 품목',
+      unit: newInventoryPart.unit || 'EA',
+      qtyPerUnit: 1,
+      stockQty: Math.max(0, newInventoryPart.stockQty),
+      supplierId: sup?.id || 'SUP-01',
+      supplierName: sup?.name || '(주)한빛디스플레이테크',
+      supplierBizNo: sup?.bizNo || '120-87-44910',
+      supplierManager: sup?.manager || '담당자',
+      supplierPhone: sup?.phone || '02-000-0000',
+      supplierEmail: sup?.email || 'order@supplier.co.kr',
+      leadTimeDays: sup?.leadTimeDays || 5,
+    }
+
+    setCustomInventoryParts((prev) => [created, ...prev])
+    setSafetyStockMap((prev) => ({
+      ...prev,
+      [code]: Math.max(0, newInventoryPart.safetyStockQty),
+    }))
+    setInventoryLogs((prev) => [
+      {
+        id: `LOG-${Date.now()}`,
+        timestamp: formatNowTimestamp(),
+        type: 'IN',
+        partCode: created.partCode,
+        partName: created.partName,
+        changeQty: created.stockQty,
+        afterStockQty: created.stockQty,
+        unit: created.unit,
+        note: '신규 재고 관리 품목 등록 (기초재고 입고)',
+      },
+      ...prev,
+    ])
+    setShowAddInventoryPartForm(false)
+    setNewInventoryPart({
+      partCode: '',
+      partName: '',
+      category: '디스플레이/터치',
+      spec: '',
+      unit: 'EA',
+      stockQty: 10,
+      safetyStockQty: 5,
+      supplierId: supplierPartners[0]?.id || 'SUP-01',
+    })
+    showToast(`창고 재고 목록에 "${created.partName}" 품목이 등록되었습니다.`)
+  }
+
+  // Receive PO items into Warehouse Inventory (STEP 3 -> STEP 4 sync)
+  const handleReceivePoItems = (po: GeneratedPurchaseOrder) => {
+    if (poReceivedMap[po.poNumber]) {
+      showToast('이미 창고 입고가 완료된 발주서입니다.')
+      return
+    }
+    const qtyMap = new Map<string, number>()
+    for (const item of po.items) {
+      qtyMap.set(item.partCode, item.adjustedOrderQty)
+    }
+
+    setKioskModels((prev) =>
+      prev.map((m) => ({
+        ...m,
+        bom: m.bom.map((b) => {
+          const add = qtyMap.get(b.partCode)
+          return add ? { ...b, stockQty: b.stockQty + add } : b
+        }),
+      }))
+    )
+    setCustomAddedBom((prev) =>
+      prev.map((b) => {
+        const add = qtyMap.get(b.partCode)
+        return add ? { ...b, stockQty: b.stockQty + add } : b
+      })
+    )
+    setCustomInventoryParts((prev) =>
+      prev.map((b) => {
+        const add = qtyMap.get(b.partCode)
+        return add ? { ...b, stockQty: b.stockQty + add } : b
+      })
+    )
+
+    const nowStr = formatNowTimestamp()
+    const newLogs: InventoryLogItem[] = po.items.map((item, idx) => {
+      const currentPart = warehouseInventory.find((p) => p.partCode === item.partCode)
+      const prevStock = currentPart ? currentPart.stockQty : item.stockQty
+      return {
+        id: `LOG-${Date.now()}-${idx}`,
+        timestamp: nowStr,
+        type: 'IN',
+        partCode: item.partCode,
+        partName: item.partName,
+        changeQty: item.adjustedOrderQty,
+        afterStockQty: prevStock + item.adjustedOrderQty,
+        unit: item.unit,
+        note: `발주서(${po.poNumber}) 자재 입고 완료 · ${po.supplierName}`,
+      }
+    })
+
+    setInventoryLogs((prev) => [...newLogs, ...prev.slice(0, 25)])
+    setPoReceivedMap((prev) => ({ ...prev, [po.poNumber]: true }))
+    showToast(
+      `[${po.supplierName}] 발주 부품 ${po.totalItemTypes}종(총 ${po.totalOrderQty}개)이 창고 현재고에 입고(+) 반영되었습니다!`
+    )
+  }
 
   // Step 1 Client Partner CRUD Handlers
   const handleSelectClientPartner = (partner: PartnerCompany) => {
@@ -445,6 +794,15 @@ function App() {
     field: keyof ExpandedBomItem,
     value: string | number
   ) => {
+    if (field === 'stockQty') {
+      handleAdjustWarehouseStock(
+        partCode,
+        Number(value) || 0,
+        'STEP 2 BOM 화면에서 창고 현재고 직접 수정',
+        'ADJUST'
+      )
+      return
+    }
     if (field === 'supplierId') {
       const sup = supplierPartners.find((s) => s.id === value)
       if (sup) {
@@ -653,8 +1011,8 @@ function App() {
             </div>
           </div>
 
-          {/* 4 Main Step Tabs (One-Click Full Screen Switch) */}
-          <nav className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+          {/* 5 Main Step Tabs (One-Click Full Screen Switch) */}
+          <nav className="grid grid-cols-2 lg:grid-cols-5 gap-2.5">
             <button
               type="button"
               onClick={() => setActiveTab('STEP1_SCAN')}
@@ -674,7 +1032,7 @@ function App() {
                 >
                   1
                 </span>
-                <div className=" truncate">
+                <div className="truncate">
                   <div className="text-sm sm:text-base font-extrabold truncate">
                     수주 발주서 스캔·입력
                   </div>
@@ -762,6 +1120,52 @@ function App() {
 
             <button
               type="button"
+              onClick={() => setActiveTab('STEP4_INVENTORY')}
+              className={`flex items-center justify-between px-4 py-3 rounded-xl text-left transition-all cursor-pointer border ${
+                activeTab === 'STEP4_INVENTORY'
+                  ? 'bg-amber-600 text-white border-amber-600 shadow-md shadow-amber-600/20'
+                  : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+              }`}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <span
+                  className={`w-7 h-7 rounded-lg text-sm font-extrabold flex items-center justify-center shrink-0 ${
+                    activeTab === 'STEP4_INVENTORY'
+                      ? 'bg-white text-amber-600'
+                      : 'bg-amber-100 text-amber-700'
+                  }`}
+                >
+                  4
+                </span>
+                <div className="truncate">
+                  <div className="text-sm sm:text-base font-extrabold truncate flex items-center gap-1.5">
+                    <span>창고 재고 관리</span>
+                    {inventoryStats.alertCount > 0 && (
+                      <span
+                        className={`px-1.5 py-0.2 rounded-full text-[11px] font-black ${
+                          activeTab === 'STEP4_INVENTORY'
+                            ? 'bg-white text-amber-700'
+                            : 'bg-amber-500 text-white'
+                        }`}
+                      >
+                        부족 {inventoryStats.alertCount}
+                      </span>
+                    )}
+                  </div>
+                  <div
+                    className={`text-xs truncate ${
+                      activeTab === 'STEP4_INVENTORY' ? 'text-amber-100' : 'text-slate-500'
+                    }`}
+                  >
+                    전체 {inventoryStats.total}종 · 실시간 입출고
+                  </div>
+                </div>
+              </div>
+              <Package className="w-4 h-4 shrink-0 opacity-75 hidden sm:block" />
+            </button>
+
+            <button
+              type="button"
               onClick={() => setActiveTab('STEP4_MASTER')}
               className={`flex items-center justify-between px-4 py-3 rounded-xl text-left transition-all cursor-pointer border ${
                 activeTab === 'STEP4_MASTER'
@@ -777,11 +1181,11 @@ function App() {
                       : 'bg-slate-200 text-slate-700'
                   }`}
                 >
-                  4
+                  5
                 </span>
                 <div className="truncate">
                   <div className="text-sm sm:text-base font-extrabold truncate">
-                    거래처·BOM 마스터 관리
+                    거래처·BOM 마스터
                   </div>
                   <div
                     className={`text-xs truncate ${
@@ -1302,7 +1706,7 @@ function App() {
                 </p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2.5">
                 <label className="inline-flex items-center gap-2 text-sm font-bold text-slate-700 cursor-pointer select-none bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-200">
                   <input
                     type="checkbox"
@@ -1312,6 +1716,15 @@ function App() {
                   />
                   <span>창고 현재고 자동 차감</span>
                 </label>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('STEP4_INVENTORY')}
+                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition-colors cursor-pointer"
+                >
+                  <Package className="w-4 h-4 text-amber-600" />
+                  창고 재고 관리 (현재고 조정)
+                </button>
 
                 <button
                   type="button"
@@ -1926,11 +2339,603 @@ function App() {
                       <Send className="w-4 h-4" />
                       업체({po.supplierName})로 PDF 발주서 파일 전송
                     </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleReceivePoItems(po)}
+                      disabled={Boolean(poReceivedMap[po.poNumber])}
+                      className={`w-full inline-flex items-center justify-center gap-2 py-2 px-4 rounded-xl text-xs font-extrabold border transition-colors cursor-pointer ${
+                        poReceivedMap[po.poNumber]
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 cursor-default'
+                          : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-200'
+                      }`}
+                    >
+                      <PackageCheck className="w-4 h-4" />
+                      {poReceivedMap[po.poNumber]
+                        ? '자재 입고 완료됨 (창고 현재고에 +반영됨)'
+                        : `자재 입고 완료 처리 (창고 현재고 +${po.totalOrderQty}개 자동 반영)`}
+                    </button>
                   </div>
                 </div>
               ))}
             </div>
           </section>
+        )}
+
+        {/* =====================================================================
+            TAB 4: 창고 재고 및 입출고 관리 (STEP 2 현재고와 100% 실시간 연동)
+        ===================================================================== */}
+        {activeTab === 'STEP4_INVENTORY' && (
+          <div className="space-y-6">
+            <section className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs space-y-6 p-6">
+              {/* Header */}
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-200 pb-5">
+                <div>
+                  <div className="flex items-center gap-2.5">
+                    <span className="px-3 py-1 rounded-lg text-sm font-extrabold bg-amber-600 text-white">
+                      STEP 4 · 재고 관리
+                    </span>
+                    <h2 className="text-xl font-extrabold text-slate-900">
+                      부품 창고 현재고 및 입·출고 통합 관리
+                    </h2>
+                  </div>
+                  <p className="text-sm text-slate-500 mt-1">
+                    이곳에서 관리하는 부품별 <strong>창고 현재고</strong> 숫자가{' '}
+                    <strong className="text-violet-700">STEP 2 (BOM 자동 전개)</strong>의 현재고 칸에 100% 실시간으로 연동되어 실제 발주수량을 계산합니다.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('STEP2_BOM')}
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 transition-colors cursor-pointer"
+                  >
+                    ← STEP 2 (BOM 화면)에서 연동 확인
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddInventoryPartForm((v) => !v)}
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-extrabold bg-amber-600 hover:bg-amber-500 text-white shadow-xs transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />+ 신규 재고 부품 등록
+                  </button>
+                </div>
+              </div>
+
+              {/* 4 Summary Cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <button
+                  type="button"
+                  onClick={() => setInventoryStatusFilter('ALL')}
+                  className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+                    inventoryStatusFilter === 'ALL'
+                      ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
+                      : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800'
+                  }`}
+                >
+                  <div
+                    className={`text-xs font-bold ${
+                      inventoryStatusFilter === 'ALL' ? 'text-slate-300' : 'text-slate-500'
+                    }`}
+                  >
+                    전체 관리 부품
+                  </div>
+                  <div className="text-2xl font-black mt-1">{inventoryStats.total}종</div>
+                  <div
+                    className={`text-xs mt-1 ${
+                      inventoryStatusFilter === 'ALL' ? 'text-slate-300' : 'text-slate-500'
+                    }`}
+                  >
+                    키오스크 표준 BOM 연동 품목
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setInventoryStatusFilter('NORMAL')}
+                  className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+                    inventoryStatusFilter === 'NORMAL'
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                      : 'bg-emerald-50/60 hover:bg-emerald-50 border-emerald-200 text-emerald-950'
+                  }`}
+                >
+                  <div
+                    className={`text-xs font-bold ${
+                      inventoryStatusFilter === 'NORMAL' ? 'text-emerald-100' : 'text-emerald-700'
+                    }`}
+                  >
+                    정상 보유 품목 (안전재고 이상)
+                  </div>
+                  <div className="text-2xl font-black mt-1">{inventoryStats.normal}종</div>
+                  <div
+                    className={`text-xs mt-1 ${
+                      inventoryStatusFilter === 'NORMAL' ? 'text-emerald-100' : 'text-emerald-600'
+                    }`}
+                  >
+                    즉시 조립 투입 가능
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setInventoryStatusFilter('LOW')}
+                  className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+                    inventoryStatusFilter === 'LOW'
+                      ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
+                      : 'bg-amber-50/70 hover:bg-amber-50 border-amber-200 text-amber-950'
+                  }`}
+                >
+                  <div
+                    className={`text-xs font-bold flex items-center gap-1 ${
+                      inventoryStatusFilter === 'LOW' ? 'text-amber-100' : 'text-amber-700'
+                    }`}
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    재고 부족 (안전재고 미달)
+                  </div>
+                  <div className="text-2xl font-black mt-1">{inventoryStats.low}종</div>
+                  <div
+                    className={`text-xs mt-1 ${
+                      inventoryStatusFilter === 'LOW' ? 'text-amber-100' : 'text-amber-700'
+                    }`}
+                  >
+                    선제적 보충 발주 권장
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setInventoryStatusFilter('EMPTY')}
+                  className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+                    inventoryStatusFilter === 'EMPTY'
+                      ? 'bg-rose-600 text-white border-rose-600 shadow-sm'
+                      : 'bg-rose-50/70 hover:bg-rose-50 border-rose-200 text-rose-950'
+                  }`}
+                >
+                  <div
+                    className={`text-xs font-bold ${
+                      inventoryStatusFilter === 'EMPTY' ? 'text-rose-100' : 'text-rose-700'
+                    }`}
+                  >
+                    품절 품목 (현재고 0)
+                  </div>
+                  <div className="text-2xl font-black mt-1">{inventoryStats.empty}종</div>
+                  <div
+                    className={`text-xs mt-1 ${
+                      inventoryStatusFilter === 'EMPTY' ? 'text-rose-100' : 'text-rose-600'
+                    }`}
+                  >
+                    긴급 매입 발주 필요
+                  </div>
+                </button>
+              </div>
+
+              {/* Add New Inventory Part Form */}
+              {showAddInventoryPartForm && (
+                <div className="p-5 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-base font-extrabold text-amber-950 flex items-center gap-2">
+                      <Package className="w-5 h-5 text-amber-600" />
+                      창고 신규 재고 부품 등록
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddInventoryPartForm(false)}
+                      className="text-slate-400 hover:text-slate-700 cursor-pointer"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-sm">
+                    <div>
+                      <label className="block text-slate-700 font-semibold mb-1">부품코드</label>
+                      <input
+                        type="text"
+                        placeholder="예: CBL-LAN-CAT6"
+                        value={newInventoryPart.partCode}
+                        onChange={(e) =>
+                          setNewInventoryPart({ ...newInventoryPart, partCode: e.target.value })
+                        }
+                        className="w-full px-3 py-2 rounded-xl bg-white border border-amber-300"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-700 font-semibold mb-1">카테고리</label>
+                      <select
+                        value={newInventoryPart.category}
+                        onChange={(e) =>
+                          setNewInventoryPart({
+                            ...newInventoryPart,
+                            category: e.target.value as PartCategory,
+                          })
+                        }
+                        className="w-full px-3 py-2 rounded-xl bg-white border border-amber-300 font-bold"
+                      >
+                        {PART_CATEGORIES.map((c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-slate-700 font-semibold mb-1">
+                        부품명 (필수)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="예: CAT.6 기가비트 랜 케이블 (3M)"
+                        value={newInventoryPart.partName}
+                        onChange={(e) =>
+                          setNewInventoryPart({ ...newInventoryPart, partName: e.target.value })
+                        }
+                        className="w-full px-3 py-2 rounded-xl bg-white border border-amber-300 font-bold"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-slate-700 font-semibold mb-1">상세 규격</label>
+                      <input
+                        type="text"
+                        placeholder="예: STP 차폐, RJ45 커넥터"
+                        value={newInventoryPart.spec}
+                        onChange={(e) =>
+                          setNewInventoryPart({ ...newInventoryPart, spec: e.target.value })
+                        }
+                        className="w-full px-3 py-2 rounded-xl bg-white border border-amber-300"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-700 font-semibold mb-1">
+                        기초 현재고 / 안전재고
+                      </label>
+                      <div className="flex gap-1.5">
+                        <input
+                          type="number"
+                          min={0}
+                          placeholder="현재고"
+                          value={newInventoryPart.stockQty}
+                          onChange={(e) =>
+                            setNewInventoryPart({
+                              ...newInventoryPart,
+                              stockQty: Number(e.target.value) || 0,
+                            })
+                          }
+                          className="w-1/2 px-3 py-2 rounded-xl bg-white border border-amber-300 font-bold"
+                        />
+                        <input
+                          type="number"
+                          min={0}
+                          placeholder="안전재고"
+                          value={newInventoryPart.safetyStockQty}
+                          onChange={(e) =>
+                            setNewInventoryPart({
+                              ...newInventoryPart,
+                              safetyStockQty: Number(e.target.value) || 0,
+                            })
+                          }
+                          className="w-1/2 px-3 py-2 rounded-xl bg-white border border-amber-300 font-bold"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-slate-700 font-semibold mb-1">주 발주처</label>
+                      <select
+                        value={newInventoryPart.supplierId}
+                        onChange={(e) =>
+                          setNewInventoryPart({ ...newInventoryPart, supplierId: e.target.value })
+                        }
+                        className="w-full px-3 py-2 rounded-xl bg-white border border-amber-300 font-bold"
+                      >
+                        {supplierPartners.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddInventoryPartForm(false)}
+                      className="px-4 py-2 rounded-xl text-sm font-semibold bg-white border border-slate-300 cursor-pointer"
+                    >
+                      취소
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddWarehousePart}
+                      className="px-5 py-2 rounded-xl text-sm font-bold bg-amber-600 text-white cursor-pointer"
+                    >
+                      창고 재고에 등록
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Filter & Search Bar */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {CATEGORIES.map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setInventoryCategory(cat)}
+                      className={`px-3.5 py-2 rounded-xl text-sm font-bold transition-colors cursor-pointer ${
+                        inventoryCategory === cat
+                          ? 'bg-amber-600 text-white shadow-2xs'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200/80'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="relative w-full md:w-72">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="부품코드, 부품명, 공급사 검색..."
+                    value={inventorySearch}
+                    onChange={(e) => setInventorySearch(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-300 text-sm focus:outline-none focus:border-amber-500 focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* Inventory Table */}
+              <div className="overflow-x-auto rounded-xl border border-slate-200">
+                <table className="w-full min-w-[1080px] text-left border-collapse text-sm">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-700 border-b border-slate-200 whitespace-nowrap">
+                      <th className="py-3.5 px-4 font-bold w-[150px]">부품코드 / 분류</th>
+                      <th className="py-3.5 px-4 font-bold min-w-[230px]">부품명 및 규격</th>
+                      <th className="py-3.5 px-4 text-center font-bold w-[110px]">재고 상태</th>
+                      <th className="py-3.5 px-4 text-center font-bold w-[220px]">
+                        창고 현재고 (실시간 입·출고 조정)
+                      </th>
+                      <th className="py-3.5 px-4 text-center font-bold w-[110px]">안전재고 기준</th>
+                      <th className="py-3.5 px-4 text-right font-bold w-[130px]">
+                        현재 수주 필요량
+                      </th>
+                      <th className="py-3.5 px-4 font-bold min-w-[190px]">주 매입 발주처</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {filteredWarehouseInventory.map((part) => (
+                      <tr key={part.partCode} className="hover:bg-slate-50/90 transition-colors">
+                        <td className="py-4 px-4 whitespace-nowrap align-middle">
+                          <div className="font-mono font-bold text-indigo-600 text-sm">
+                            {part.partCode}
+                          </div>
+                          <span className="inline-block mt-1 px-2.5 py-0.5 rounded-md text-xs font-semibold bg-slate-100 text-slate-700 whitespace-nowrap">
+                            {part.category}
+                          </span>
+                        </td>
+
+                        <td className="py-4 px-4 align-middle break-keep">
+                          <div className="font-bold text-slate-900 text-base">{part.partName}</div>
+                          <div className="text-xs text-slate-500 mt-0.5">{part.spec}</div>
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {part.usedInModels.map((mc) => (
+                              <span
+                                key={mc}
+                                className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-mono text-[11px] font-semibold whitespace-nowrap"
+                              >
+                                {mc}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+
+                        <td className="py-4 px-4 text-center whitespace-nowrap align-middle">
+                          {part.stockStatus === 'EMPTY' ? (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-extrabold bg-rose-100 text-rose-700 border border-rose-200">
+                              품절 (0)
+                            </span>
+                          ) : part.stockStatus === 'LOW' ? (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-extrabold bg-amber-100 text-amber-800 border border-amber-200">
+                              재고 부족
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                              정상 보유
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="py-4 px-4 whitespace-nowrap align-middle">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              type="button"
+                              title="1개 출고(-1)"
+                              onClick={() =>
+                                handleAdjustWarehouseStock(
+                                  part.partCode,
+                                  part.stockQty - 1,
+                                  '창고 재고 관리에서 -1 출고 차감',
+                                  'OUT'
+                                )
+                              }
+                              className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-rose-100 hover:text-rose-700 text-slate-700 font-extrabold border border-slate-300 transition-colors cursor-pointer"
+                            >
+                              -1
+                            </button>
+                            <input
+                              type="number"
+                              min={0}
+                              value={part.stockQty}
+                              onChange={(e) =>
+                                handleAdjustWarehouseStock(
+                                  part.partCode,
+                                  Math.max(0, Number(e.target.value) || 0),
+                                  '창고 재고 수량 직접 수정',
+                                  'ADJUST'
+                                )
+                              }
+                              className="w-20 text-center py-1.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-950 font-black text-base focus:outline-none focus:border-emerald-600"
+                            />
+                            <span className="text-xs font-bold text-slate-500">{part.unit}</span>
+                            <button
+                              type="button"
+                              title="1개 입고(+1)"
+                              onClick={() =>
+                                handleAdjustWarehouseStock(
+                                  part.partCode,
+                                  part.stockQty + 1,
+                                  '창고 재고 관리에서 +1 입고 추가',
+                                  'IN'
+                                )
+                              }
+                              className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-emerald-100 hover:text-emerald-700 text-slate-700 font-extrabold border border-slate-300 transition-colors cursor-pointer"
+                            >
+                              +1
+                            </button>
+                            <button
+                              type="button"
+                              title="5개 입고(+5)"
+                              onClick={() =>
+                                handleAdjustWarehouseStock(
+                                  part.partCode,
+                                  part.stockQty + 5,
+                                  '창고 재고 관리에서 +5 입고 추가',
+                                  'IN'
+                                )
+                              }
+                              className="px-2 h-8 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-extrabold border border-emerald-200 text-xs transition-colors cursor-pointer"
+                            >
+                              +5
+                            </button>
+                          </div>
+                        </td>
+
+                        <td className="py-4 px-4 text-center whitespace-nowrap align-middle">
+                          <div className="inline-flex items-center gap-1">
+                            <input
+                              type="number"
+                              min={0}
+                              value={part.safetyStockQty}
+                              onChange={(e) =>
+                                setSafetyStockMap((prev) => ({
+                                  ...prev,
+                                  [part.partCode]: Math.max(0, Number(e.target.value) || 0),
+                                }))
+                              }
+                              className="w-16 text-center py-1 rounded-lg bg-white border border-slate-300 text-slate-700 font-bold text-sm"
+                            />
+                            <span className="text-xs text-slate-500">{part.unit}</span>
+                          </div>
+                        </td>
+
+                        <td className="py-4 px-4 text-right font-mono whitespace-nowrap align-middle">
+                          {part.currentReqQty > 0 ? (
+                            <div>
+                              <span className="font-extrabold text-violet-700 text-base">
+                                {part.currentReqQty.toLocaleString()} {part.unit}
+                              </span>
+                              <div className="text-xs text-slate-500">
+                                {part.stockQty >= part.currentReqQty ? (
+                                  <span className="text-emerald-600 font-semibold">
+                                    재고 충분 (잔여 {part.stockQty - part.currentReqQty})
+                                  </span>
+                                ) : (
+                                  <span className="text-rose-600 font-semibold">
+                                    발주 필요 ({part.currentReqQty - part.stockQty} 부족)
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-slate-400">현재 수주 해당없음</span>
+                          )}
+                        </td>
+
+                        <td className="py-4 px-4 whitespace-nowrap align-middle">
+                          <div className="font-bold text-slate-900">{part.supplierName}</div>
+                          <div className="text-xs text-slate-500 mt-0.5">
+                            {part.supplierManager} ({part.supplierPhone})
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            {/* Recent Inventory In/Out History Log */}
+            <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+                <div className="flex items-center gap-2">
+                  <History className="w-5 h-5 text-amber-600" />
+                  <h3 className="text-lg font-extrabold text-slate-900">
+                    최근 창고 입·출고 및 재고 조정 이력
+                  </h3>
+                </div>
+                <span className="text-xs font-semibold text-slate-500">
+                  재고 수량 변경 및 STEP 3 발주서 입고 완료 내역이 자동 기록됩니다
+                </span>
+              </div>
+
+              <div className="overflow-x-auto rounded-xl border border-slate-200">
+                <table className="w-full min-w-[780px] text-left border-collapse text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 text-slate-600 border-b border-slate-200 whitespace-nowrap text-xs">
+                      <th className="py-2.5 px-4 font-bold">일시</th>
+                      <th className="py-2.5 px-4 font-bold">구분</th>
+                      <th className="py-2.5 px-4 font-bold">부품코드 / 부품명</th>
+                      <th className="py-2.5 px-4 text-right font-bold">변동 수량</th>
+                      <th className="py-2.5 px-4 text-right font-bold">변경 후 현재고</th>
+                      <th className="py-2.5 px-4 font-bold">비고 (사유)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {inventoryLogs.map((log) => (
+                      <tr key={log.id} className="hover:bg-slate-50">
+                        <td className="py-3 px-4 font-mono text-xs text-slate-500 whitespace-nowrap">
+                          {log.timestamp}
+                        </td>
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <span
+                            className={`px-2.5 py-0.5 rounded-md text-xs font-extrabold ${
+                              log.type === 'IN'
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : log.type === 'OUT'
+                                  ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                  : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                            }`}
+                          >
+                            {log.type === 'IN' ? '입고(+)' : log.type === 'OUT' ? '출고(-)' : '수량조정'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <span className="font-mono text-xs font-bold text-indigo-600 mr-2">
+                            {log.partCode}
+                          </span>
+                          <strong className="text-slate-900">{log.partName}</strong>
+                        </td>
+                        <td
+                          className={`py-3 px-4 text-right font-mono font-extrabold whitespace-nowrap ${
+                            log.changeQty > 0 ? 'text-emerald-600' : 'text-rose-600'
+                          }`}
+                        >
+                          {log.changeQty > 0 ? `+${log.changeQty}` : log.changeQty} {log.unit}
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
+                          {log.afterStockQty} {log.unit}
+                        </td>
+                        <td className="py-3 px-4 text-slate-600 text-xs">{log.note}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </div>
         )}
 
         {/* =====================================================================
