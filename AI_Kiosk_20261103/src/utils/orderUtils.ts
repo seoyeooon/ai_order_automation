@@ -44,7 +44,6 @@ export function expandBomFromOrder(
           grossRequiredQty: subTotalQty,
           netOrderQty: 0,
           adjustedOrderQty: 0,
-          totalAmount: 0,
         })
       }
     }
@@ -62,7 +61,6 @@ export function expandBomFromOrder(
 
     part.netOrderQty = netQty
     part.adjustedOrderQty = finalQty
-    part.totalAmount = finalQty * part.unitCost
     result.push(part)
   }
 
@@ -94,9 +92,8 @@ export function generatePurchaseOrders(
     baseDate.setDate(baseDate.getDate() + maxLeadDays)
     const reqDateStr = baseDate.toISOString().slice(0, 10)
 
-    const supplyAmount = items.reduce((sum, i) => sum + i.totalAmount, 0)
-    const vatAmount = Math.round(supplyAmount * 0.1)
-    const totalAmount = supplyAmount + vatAmount
+    const totalItemTypes = items.length
+    const totalOrderQty = items.reduce((sum, i) => sum + i.adjustedOrderQty, 0)
     const poNumber = `PO-${datePrefix}-${String(idx).padStart(2, '0')}`
     const cleanSupplier = first.supplierName.replace(/[()주\s]/g, '')
     const fileName = `${poNumber}_매입발주서_${cleanSupplier}.csv`
@@ -113,9 +110,8 @@ export function generatePurchaseOrders(
       requestedDeliveryDate: reqDateStr,
       deliveryPlace: '당사 제1공장 자재입고장 (경기도 화성시 동탄산단 8길 21)',
       items,
-      supplyAmount,
-      vatAmount,
-      totalAmount,
+      totalItemTypes,
+      totalOrderQty,
       fileName,
       status: downloadedMap[poNumber] || 'READY',
     })
@@ -135,27 +131,28 @@ export function downloadPurchaseOrderCsv(
     ['수신처(공급사)', po.supplierName, '사업자번호', po.supplierBizNo, '담당자', po.supplierManager, '연락처', po.supplierPhone],
     ['연계 수주번호', clientOrder.orderNo, '발주 고객사', clientOrder.clientName, '입고장소', po.deliveryPlace, '', ''],
     [''],
-    ['No', '부품코드', '부품명', '카테고리', '규격/사양', '단위', '발주수량', '단가(원)', '공급가액(원)'],
+    ['No', '부품코드', '부품명', '카테고리', '규격/사양', '적용 키오스크 모델', '단위', '발주수량'],
   ]
 
   po.items.forEach((item, index) => {
+    const modelsText = item.sourceModels
+      .map((m) => `${m.modelCode}(${m.orderQty}대→${m.subTotalQty}${item.unit})`)
+      .join(' / ')
     rows.push([
       String(index + 1),
       item.partCode,
       item.partName,
       item.category,
       item.spec,
+      modelsText,
       item.unit,
       String(item.adjustedOrderQty),
-      String(item.unitCost),
-      String(item.totalAmount),
     ])
   })
 
   rows.push([''])
-  rows.push(['', '', '', '', '', '', '공급가액 합계', '', String(po.supplyAmount)])
-  rows.push(['', '', '', '', '', '', '부가세 (10%)', '', String(po.vatAmount)])
-  rows.push(['', '', '', '', '', '', '총 발주금액 (VAT포함)', '', String(po.totalAmount)])
+  rows.push(['', '', '', '', '', '발주 품목 종수', `${po.totalItemTypes}종`, ''])
+  rows.push(['', '', '', '', '', '총 발주 수량 합계', '', String(po.totalOrderQty)])
 
   const csvContent =
     '\uFEFF' +
@@ -176,8 +173,4 @@ export function downloadPurchaseOrderCsv(
   link.click()
   document.body.removeChild(link)
   URL.revokeObjectURL(url)
-}
-
-export function formatKRW(amount: number): string {
-  return new Intl.NumberFormat('ko-KR').format(amount) + '원'
 }

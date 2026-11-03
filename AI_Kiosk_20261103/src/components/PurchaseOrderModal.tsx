@@ -1,6 +1,15 @@
-import { Building2, Calendar, CheckCircle2, Download, FileSpreadsheet, Mail, Phone, Printer, X } from 'lucide-react'
+import {
+  Building2,
+  Calendar,
+  CheckCircle2,
+  Download,
+  FileSpreadsheet,
+  Mail,
+  Phone,
+  Printer,
+  X,
+} from 'lucide-react'
 import type { ClientOrder, GeneratedPurchaseOrder } from '../types/order'
-import { formatKRW } from '../utils/orderUtils'
 
 interface PurchaseOrderModalProps {
   po: GeneratedPurchaseOrder | null
@@ -20,22 +29,22 @@ export function PurchaseOrderModal({
   if (!po) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 overflow-y-auto">
       <div className="relative w-full max-w-4xl bg-white text-slate-900 rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-8">
         {/* Top Action Bar */}
-        <div className="flex items-center justify-between px-6 py-4 bg-slate-900 text-white">
+        <div className="flex flex-wrap items-center justify-between px-6 py-4 bg-slate-50 border-b border-slate-200 gap-3">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-indigo-500/20 text-indigo-300">
+            <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100">
               <FileSpreadsheet className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-sm">{po.fileName}</span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                <span className="font-bold text-sm text-slate-900">{po.fileName}</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">
                   자동 생성됨
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500">
                 수신처: {po.supplierName} ({po.supplierManager})
               </p>
             </div>
@@ -45,7 +54,7 @@ export function PurchaseOrderModal({
             <button
               type="button"
               onClick={() => window.print()}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 transition-colors cursor-pointer"
             >
               <Printer className="w-4 h-4" />
               인쇄 / PDF
@@ -53,7 +62,7 @@ export function PurchaseOrderModal({
             <button
               type="button"
               onClick={() => onSendEmail(po)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-indigo-600 hover:bg-indigo-500 text-white transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors cursor-pointer"
             >
               <Mail className="w-4 h-4" />
               발주서 메일 발송
@@ -69,7 +78,7 @@ export function PurchaseOrderModal({
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer ml-1"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer ml-1"
             >
               <X className="w-5 h-5" />
             </button>
@@ -79,7 +88,7 @@ export function PurchaseOrderModal({
         {/* Printable Document Body */}
         <div className="p-8 md:p-10 space-y-6 bg-white max-h-[80vh] overflow-y-auto">
           {/* Document Header */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between border-b-2 border-slate-900 pb-6 gap-4">
+          <div className="flex flex-col md:flex-row md:items-end justify-between border-b-2 border-slate-800 pb-6 gap-4">
             <div>
               <p className="text-xs font-bold tracking-widest text-indigo-600 uppercase">
                 PURCHASE ORDER · AI SCM AUTOMATION
@@ -99,7 +108,7 @@ export function PurchaseOrderModal({
               </div>
               <div className="flex items-center justify-end gap-2">
                 <span className="text-slate-500">납기요청일:</span>
-                <span className="font-semibold text-indigo-600">{po.requestedDeliveryDate}</span>
+                <span className="font-bold text-indigo-600">{po.requestedDeliveryDate}</span>
               </div>
             </div>
           </div>
@@ -111,7 +120,7 @@ export function PurchaseOrderModal({
               <div className="flex items-center justify-between border-b border-slate-200 pb-2">
                 <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider flex items-center gap-1.5">
                   <Building2 className="w-4 h-4" />
-                  수신처 (공급사 / 매입처)
+                  수신처 (공급사 / 매입 발주처)
                 </span>
                 <span className="text-xs font-mono text-slate-500">{po.supplierBizNo}</span>
               </div>
@@ -158,17 +167,20 @@ export function PurchaseOrderModal({
             </div>
           </div>
 
-          {/* Total Banner */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-3.5 rounded-xl bg-indigo-50 border border-indigo-200">
+          {/* Summary Banner */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-3.5 rounded-xl bg-indigo-50/80 border border-indigo-200">
             <span className="text-sm font-bold text-indigo-950">
-              총 발주 합계금액 (부가세 포함)
+              발주 부품 요약 (BOM 자동 전개 기준)
             </span>
-            <div className="text-right">
-              <span className="text-2xl font-extrabold text-indigo-700">
-                ₩ {new Intl.NumberFormat('ko-KR').format(po.totalAmount)}
+            <div className="flex items-center gap-4 text-right">
+              <span className="text-xs font-semibold text-slate-600">
+                발주 품목: <strong className="text-indigo-700 text-sm">{po.totalItemTypes}종</strong>
               </span>
-              <span className="text-xs text-indigo-600 ml-2">
-                (공급가액 {formatKRW(po.supplyAmount)} + 부가세 {formatKRW(po.vatAmount)})
+              <span className="text-xs font-semibold text-slate-600">
+                총 발주 수량:{' '}
+                <strong className="text-indigo-700 text-lg font-extrabold">
+                  {po.totalOrderQty.toLocaleString()} EA/SET
+                </strong>
               </span>
             </div>
           </div>
@@ -180,11 +192,11 @@ export function PurchaseOrderModal({
                 <tr className="bg-slate-100 text-slate-700 border-b border-slate-200">
                   <th className="py-2.5 px-3 font-bold text-center w-10">No</th>
                   <th className="py-2.5 px-3 font-bold">부품코드</th>
+                  <th className="py-2.5 px-3 font-bold">카테고리</th>
                   <th className="py-2.5 px-3 font-bold">품목명 / 규격</th>
+                  <th className="py-2.5 px-3 font-bold">적용 키오스크 모델 (산출 근거)</th>
                   <th className="py-2.5 px-3 font-bold text-center">단위</th>
                   <th className="py-2.5 px-3 font-bold text-right">발주수량</th>
-                  <th className="py-2.5 px-3 font-bold text-right">매입단가</th>
-                  <th className="py-2.5 px-3 font-bold text-right">공급가액</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
@@ -193,43 +205,40 @@ export function PurchaseOrderModal({
                     <td className="py-3 px-3 text-center font-medium text-slate-500">
                       {idx + 1}
                     </td>
-                    <td className="py-3 px-3 font-mono font-semibold text-slate-800">
+                    <td className="py-3 px-3 font-mono font-semibold text-indigo-700">
                       {item.partCode}
+                    </td>
+                    <td className="py-3 px-3">
+                      <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-medium text-[11px]">
+                        {item.category}
+                      </span>
                     </td>
                     <td className="py-3 px-3">
                       <div className="font-semibold text-slate-900">{item.partName}</div>
                       <div className="text-[11px] text-slate-500 mt-0.5">{item.spec}</div>
-                      <div className="text-[11px] text-indigo-600 mt-0.5">
-                        적용 모델:{' '}
-                        {item.sourceModels
-                          .map((m) => `${m.modelCode}(${m.orderQty}대→${m.subTotalQty}${item.unit})`)
-                          .join(', ')}
-                      </div>
                     </td>
-                    <td className="py-3 px-3 text-center text-slate-600">{item.unit}</td>
-                    <td className="py-3 px-3 text-right font-bold text-slate-900">
+                    <td className="py-3 px-3 text-[11px] text-indigo-600 font-medium">
+                      {item.sourceModels
+                        .map((m) => `${m.modelCode} (${m.orderQty}대 → ${m.subTotalQty}${item.unit})`)
+                        .join(', ')}
+                    </td>
+                    <td className="py-3 px-3 text-center text-slate-600 font-medium">
+                      {item.unit}
+                    </td>
+                    <td className="py-3 px-3 text-right font-extrabold text-slate-900 text-sm">
                       {item.adjustedOrderQty.toLocaleString()}
-                    </td>
-                    <td className="py-3 px-3 text-right text-slate-700">
-                      {formatKRW(item.unitCost)}
-                    </td>
-                    <td className="py-3 px-3 text-right font-bold text-slate-900">
-                      {formatKRW(item.totalAmount)}
                     </td>
                   </tr>
                 ))}
               </tbody>
               <tfoot className="bg-slate-50 border-t-2 border-slate-300 font-semibold text-slate-800">
                 <tr>
-                  <td colSpan={4} className="py-2.5 px-3 text-right text-slate-500">
-                    소계 (품목 {po.items.length}건)
+                  <td colSpan={5} className="py-2.5 px-3 text-right text-slate-600">
+                    합계 (총 {po.totalItemTypes}종 품목)
                   </td>
-                  <td className="py-2.5 px-3 text-right font-bold">
-                    {po.items.reduce((s, i) => s + i.adjustedOrderQty, 0).toLocaleString()}
-                  </td>
-                  <td className="py-2.5 px-3 text-right text-slate-500">공급가액 합계</td>
-                  <td className="py-2.5 px-3 text-right font-bold text-indigo-700">
-                    {formatKRW(po.supplyAmount)}
+                  <td className="py-2.5 px-3 text-center text-slate-500">수량 합계</td>
+                  <td className="py-2.5 px-3 text-right font-extrabold text-indigo-700 text-sm">
+                    {po.totalOrderQty.toLocaleString()}
                   </td>
                 </tr>
               </tfoot>
@@ -238,8 +247,12 @@ export function PurchaseOrderModal({
 
           <div className="text-xs text-slate-500 bg-slate-50 p-3.5 rounded-lg border border-slate-200 space-y-1">
             <p className="font-semibold text-slate-700">※ 특기사항 및 납품 안내</p>
-            <p>1. 본 발주서는 AI 키오스크 수주·발주 자동화 시스템에서 BOM 전개 기준으로 자동 산출되었습니다.</p>
-            <p>2. 납품 시 거래명세서 및 시험성적서(해당 품목)를 동봉하여 입고장소로 납기일 이전까지 입고 바랍니다.</p>
+            <p>
+              1. 본 발주서는 AI 키오스크 수주·발주 자동화 시스템에서 BOM 전개 기준으로 자동 산출되었습니다.
+            </p>
+            <p>
+              2. 납품 시 거래명세서 및 검사성적서(해당 품목)를 동봉하여 지정된 입고장소로 납기요청일 이전까지 입고 바랍니다.
+            </p>
           </div>
         </div>
       </div>

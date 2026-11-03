@@ -4,7 +4,6 @@ export interface OrderItem {
   modelName: string
   spec: string
   quantity: number
-  unitPrice: number
 }
 
 export interface ClientOrder {
@@ -38,7 +37,6 @@ export interface BomPart {
   spec: string
   unit: string
   qtyPerUnit: number
-  unitCost: number
   stockQty: number
   supplierId: string
   supplierName: string
@@ -53,7 +51,6 @@ export interface KioskModelMaster {
   modelCode: string
   modelName: string
   spec: string
-  defaultUnitPrice: number
   bom: BomPart[]
 }
 
@@ -62,7 +59,6 @@ export interface ExpandedBomItem extends BomPart {
   grossRequiredQty: number
   netOrderQty: number
   adjustedOrderQty: number
-  totalAmount: number
 }
 
 export interface GeneratedPurchaseOrder {
@@ -77,9 +73,8 @@ export interface GeneratedPurchaseOrder {
   requestedDeliveryDate: string
   deliveryPlace: string
   items: ExpandedBomItem[]
-  supplyAmount: number
-  vatAmount: number
-  totalAmount: number
+  totalItemTypes: number
+  totalOrderQty: number
   fileName: string
   status: 'READY' | 'DOWNLOADED' | 'SENT'
 }
