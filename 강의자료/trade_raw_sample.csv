@@ -1,0 +1,8 @@
+year,reporter,partner,hs_code,product,export_value_usd,export_weight_kg,yoy_change_pct,missing_flag,port_dwell_days,customs_rework_pct,bottleneck_note,source
+2021,KOR,VNM,850760,Lithium-ion battery,182000000,2100000,,0,3.2,0.031,Normal flow,UN Comtrade / synthetic
+2022,KOR,VNM,850760,Lithium-ion battery,221000000,2400000,0.2143,0,3.6,0.038,Dwell increasing,UN Comtrade / synthetic
+2023,KOR,VNM,850760,Lithium-ion battery,,2750000,,1,4.4,0.072,Customs document rework,UN Comtrade / synthetic
+2024,KOR,VNM,850760,Lithium-ion battery,298000000,3000000,,0,5.1,0.083,Port dwell and rework,UN Comtrade / synthetic
+2025,KOR,VNM,850760,Lithium-ion battery,326000000,3170000,0.094,0,4.8,0.066,Supplier capacity check,UN Comtrade / synthetic
+2025,KOR,USA,850760,Lithium-ion battery,412000000,4050000,0.126,0,6.2,0.042,Transpacific congestion,UN Comtrade / synthetic
+2025,KOR,DEU,850760,Lithium-ion battery,188000000,1890000,0.082,0,4.1,0.035,Rail slot shortage,UN Comtrade / synthetic

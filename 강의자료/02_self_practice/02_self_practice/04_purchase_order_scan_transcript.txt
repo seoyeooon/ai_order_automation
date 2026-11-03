@@ -1,0 +1,14 @@
+Instructor-supported transcript for 04_purchase_order_scan.png
+Distribute after the initial independent OCR attempt if the image prevents progress.
+
+PURCHASE ORDER NO: PO-APX-261001
+BUYER: Apex Sourcing Korea Co., Ltd.
+SUPPLIER: NordWerk Controls GmbH
+PRODUCT: EC90 Controller Module
+QUANTITY: 1,200 PCS
+UNIT PRICE: EUR 12.50
+DELIVERY: CIF Hamburg
+REQUIRED ETA: 2026-10-24
+
+Training clue: the wording and values should be compared with the supplier message,
+the shipping update email, the proforma invoice, and the certificate of origin.

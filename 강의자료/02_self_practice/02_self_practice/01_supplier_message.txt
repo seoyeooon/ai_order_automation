@@ -1,0 +1,17 @@
+From: sales@nordwerk-controls.example
+To: import@apex-sourcing.example
+Subject: NW-EC90 controller modules - commercial proposal
+Date: 2026-09-02
+
+For the EC90 controller module we can offer a minimum batch of 1,150 pieces.
+The unit price is EUR 12.50 each (or EUR 12,50 / unit in our domestic format),
+with a 3 percent early-payment discount if payment is received within ten days.
+The agreed delivery term is CIF Hamburg. Dispatch from Bremen can be arranged in
+the second week of October, subject to final PO confirmation.
+
+Please note that the product is assembled in Germany using selected components
+from multiple origins. Kindly issue the final PO under NordWerk Controls GmbH.
+
+Regards,
+Lena Hoffmann
+Commercial Sales

@@ -1,0 +1,15 @@
+# IDE & Installers
+Antigravity IDE/
+*.lnk
+*.exe
+
+# Dependencies & Build
+node_modules/
+dist/
+build/
+
+# Environment & OS
+.env
+.env.*
+.DS_Store
+Thumbs.db

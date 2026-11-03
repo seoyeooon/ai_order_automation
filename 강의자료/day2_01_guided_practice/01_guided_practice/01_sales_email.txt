@@ -1,0 +1,20 @@
+From: export@hanbit-motion.example
+To: purchasing@viettech-automation.example
+Subject: HM-220 Servo Motor Parts - shipment instruction
+Date: 2026-08-03
+
+Dear Ms. Tran,
+
+We confirm the order for 500 units of HM-220 servo motor parts at USD 29.00 per unit.
+Please arrange shipment under FOB Busan terms. Our requested delivery is no later than
+20 August 2026. Partial shipment is not preferred.
+
+Seller: Hanbit Motion Co., Ltd.
+Buyer: VietTech Automation JSC
+Product code: HM-220
+HS code: 8501.52
+Payment terms: T/T 30 days after Bill of Lading date
+
+Best regards,
+J. Kim
+Export Operations

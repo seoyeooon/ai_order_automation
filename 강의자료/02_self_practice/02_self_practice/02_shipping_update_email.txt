@@ -1,0 +1,14 @@
+From: logistics@nordwerk-controls.example
+To: import@apex-sourcing.example
+Subject: EC90 shipment update - transshipment and ETA change
+Date: 2026-10-08
+
+The EC90 shipment will depart Bremerhaven on 12 October 2026 and will be transshipped
+at Hamburg Port (DEHAM). The previous ETA of 24 October is no longer valid.
+Current expected arrival at Busan is 30 October 2026.
+
+The booking reference remains NW-SEA-261008. Please update your receiving plan.
+The consignee name on the carrier booking is currently shown as Apex Sourcing Korea.
+
+Regards,
+NordWerk Logistics

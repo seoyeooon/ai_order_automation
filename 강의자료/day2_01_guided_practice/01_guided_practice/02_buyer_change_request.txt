@@ -1,0 +1,18 @@
+From: finance@viettech-automation.example
+To: export@hanbit-motion.example
+Subject: URGENT - revised beneficiary bank for INV-2026-0815
+Date: 2026-08-14
+
+Dear Hanbit Motion team,
+
+Due to an internal banking system update, please remit the payment for INV-2026-0815
+to our NEW beneficiary account instead of the account registered in the contract.
+Please use the new account immediately and do not call our main office because the
+finance team is working remotely this week.
+
+New beneficiary: VietTech Automation Services
+Bank: Asia Pacific Commercial Bank
+Account: 009-8841-7712
+SWIFT: APCBVNVX
+
+Thank you for your urgent cooperation.
