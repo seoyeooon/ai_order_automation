@@ -22,10 +22,8 @@ import {
   Plus,
   Printer,
   RefreshCw,
-  ScanLine,
   Search,
   Send,
-  Sparkles,
   Trash2,
   UploadCloud,
   UserPlus,
@@ -52,7 +50,12 @@ import {
 } from './utils/orderUtils'
 import { parseUploadedOrderDocument } from './utils/documentParser'
 
-type ActiveTab = 'STEP1_SCAN' | 'STEP2_BOM' | 'STEP3_PO' | 'STEP4_INVENTORY' | 'STEP4_MASTER'
+type ActiveTab =
+  | 'ORDER_INTAKE'
+  | 'MATERIAL_ORDER'
+  | 'MANAGE_BOM'
+  | 'MANAGE_INVENTORY'
+  | 'MANAGE_PARTNERS'
 
 const CATEGORIES: ('전체' | PartCategory)[] = [
   '전체',
@@ -84,14 +87,15 @@ function formatNowTimestamp(): string {
 }
 
 function App() {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('STEP1_SCAN')
+  const [activeTab, setActiveTab] = useState<ActiveTab>('ORDER_INTAKE')
+  const [materialSubView, setMaterialSubView] = useState<'ALL' | 'BOM_ONLY' | 'PO_ONLY'>('ALL')
   const logSeqRef = useRef<number>(200)
 
-  // Master states (editable in-app!)
+  // Master states (editable in-app)
   const [partners, setPartners] = useState<PartnerCompany[]>(INITIAL_PARTNERS)
   const [kioskModels, setKioskModels] = useState<KioskModelMaster[]>(KIOSK_MODELS)
 
-  // Step 1: Client Order state
+  // Order Intake: Client Order state
   const [clientOrder, setClientOrder] = useState<ClientOrder>(DEFAULT_CLIENT_ORDER)
   const [showAddClientForm, setShowAddClientForm] = useState<boolean>(false)
   const [newClientForm, setNewClientForm] = useState({
@@ -103,17 +107,13 @@ function App() {
     address: '',
   })
 
-  // AI Scanning states
+  // File Upload states
   const [isScanning, setIsScanning] = useState<boolean>(false)
-  const [scanProgress, setScanProgress] = useState<number>(100)
-  const [scanStageText, setScanStageText] = useState<string>(
-    'AI 스캔 완료 · 거래처 정보 및 수주 품목이 추출되었습니다.'
-  )
   const [uploadedPreviewUrl, setUploadedPreviewUrl] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState<boolean>(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
-  // Step 2: BOM Options & CRUD states
+  // Material Order: BOM Options & CRUD states
   const [deductStock, setDeductStock] = useState<boolean>(true)
   const [selectedCategory, setSelectedCategory] = useState<'전체' | PartCategory>('전체')
   const [manualOverrides, setManualOverrides] = useState<Record<string, number>>({})
@@ -142,40 +142,40 @@ function App() {
     supplierId: 'SUP-01',
   })
 
-  // Step 3: PO Modal & Download states
+  // PO Modal & Download states
   const [previewPo, setPreviewPo] = useState<GeneratedPurchaseOrder | null>(null)
   const [poStatusMap, setPoStatusMap] = useState<Record<string, 'READY' | 'DOWNLOADED' | 'SENT'>>({})
   const [poReceivedMap, setPoReceivedMap] = useState<Record<string, boolean>>({})
 
-  // Step 4 (Inventory): Warehouse Inventory Management states
+  // Warehouse Inventory Management states
   const [inventoryCategory, setInventoryCategory] = useState<'전체' | PartCategory>('전체')
   const [inventoryStatusFilter, setInventoryStatusFilter] = useState<
     'ALL' | 'NORMAL' | 'LOW' | 'EMPTY'
   >('ALL')
   const [inventorySearch, setInventorySearch] = useState<string>('')
   const [safetyStockMap, setSafetyStockMap] = useState<Record<string, number>>({
-    'PNL-270-FHD': 5,
-    'PNL-215-FHD': 5,
-    'PNL-320-UHD': 4,
-    'PNL-156-FHD': 5,
-    'PNL-430-OUT': 3,
-    'SBC-I5-12G': 5,
-    'SBC-I3-8G': 5,
-    'NET-LTE-5G': 5,
-    'AUD-AMP-20W': 5,
-    'PAY-IC-900': 5,
-    'BF-KEY-AUD': 3,
-    'SCN-2D-QR': 5,
-    'PRT-80-THM': 5,
-    'CAM-AI-FHD': 4,
-    'ENC-27S-STL': 3,
-    'ENC-21D-SLM': 3,
-    'ENC-32M-BF': 2,
-    'FAN-120-DUAL': 8,
-    'LCK-CAM-KEY': 5,
-    'PWR-24V-HAR': 8,
-    'CBL-KIT-PRO': 10,
-    'PWR-SURGE-6P': 6,
+    'TAP-PC-001': 5,
+    'TAP-DSP-027': 5,
+    'TAP-DSP-032': 4,
+    'TAP-TCH-027': 5,
+    'TAP-TCH-032': 4,
+    'TAP-BKT-001': 5,
+    'TAP-PRT-001': 4,
+    'TAP-TON-001': 5,
+    'TAP-UPS-001': 5,
+    'TAP-PWR-001': 8,
+    'TAP-COI-001': 12,
+    'TAP-BIL-001': 5,
+    'TAP-CRD-001': 5,
+    'TAP-BIO-001': 5,
+    'TAP-CAM-001': 8,
+    'TAP-ACC-001': 3,
+    'TAP-SCN-001': 5,
+    'TAP-SND-001': 5,
+    'TAP-SEN-001': 5,
+    'TAP-VCE-001': 3,
+    'TAP-LED-001': 5,
+    'TAP-CAB-001': 3,
   })
   const [customInventoryParts, setCustomInventoryParts] = useState<BomPart[]>([])
   const [showAddInventoryPartForm, setShowAddInventoryPartForm] = useState<boolean>(false)
@@ -194,34 +194,34 @@ function App() {
       id: 'LOG-103',
       timestamp: '2026-11-03 09:30',
       type: 'IN',
-      partCode: 'PWR-24V-HAR',
-      partName: '산업용 듀얼 SMPS 파워서플라이 및 내부 통합 와이어 하네스',
+      partCode: 'TAP-COI-001',
+      partName: '코인호퍼 (동전방출기 · 1대당 3개 장착)',
       changeQty: 10,
-      afterStockQty: 10,
-      unit: 'SET',
-      note: '정기 안전재고 보충 입고 (대성파워일렉트로닉스)',
+      afterStockQty: 12,
+      unit: 'EA',
+      note: '정기 안전재고 보충 입고 (모아캐시텍)',
     },
     {
       id: 'LOG-102',
       timestamp: '2026-11-02 16:15',
-      partCode: 'PRT-80-THM',
-      partName: '3인치 고속 감열식 영수증 프린터 (오토커터)',
+      partCode: 'TAP-PRT-001',
+      partName: '제증명 프린터 (A4 레이저 발급 프린터)',
       type: 'IN',
-      changeQty: 3,
-      afterStockQty: 3,
+      changeQty: 4,
+      afterStockQty: 4,
       unit: 'EA',
-      note: '창고 실사 및 기초 재고 등록',
+      note: '창고 실사 및 기초 재고 등록 (바른프린텍)',
     },
     {
       id: 'LOG-101',
       timestamp: '2026-11-02 14:00',
-      partCode: 'PNL-270-FHD',
-      partName: '27인치 산업용 FHD 터치 디스플레이 모듈',
+      partCode: 'TAP-DSP-027',
+      partName: 'LCD 모니터 27인치 (무인민원발급기 메인 디스플레이)',
       type: 'OUT',
       changeQty: -2,
-      afterStockQty: 4,
+      afterStockQty: 6,
       unit: 'EA',
-      note: '샘플 쇼룸 키오스크 2대 조립 출고',
+      note: 'TAPI-9270J 시제품 2대 조립 출고 (새솔디스플레이)',
     },
   ])
 
@@ -293,12 +293,10 @@ function App() {
     [partners]
   )
 
-  // Real File Upload & AI Document Parsing (Excel / PDF / Image OCR)
+  // Real File Upload & Document Parsing (Excel / PDF / Image)
   const handleFileUpload = async (file: File | undefined) => {
     if (!file) return
     setIsScanning(true)
-    setScanProgress(10)
-    setScanStageText(`"${file.name}" 파일 분석 시작...`)
     setManualOverrides({})
     setCustomAddedBom([])
     setDeletedPartCodes([])
@@ -306,18 +304,11 @@ function App() {
     setPoStatusMap({})
 
     try {
-      const parsed = await parseUploadedOrderDocument(file, kioskModels, (pct, msg) => {
-        setScanProgress(pct)
-        setScanStageText(msg)
-      })
+      const parsed = await parseUploadedOrderDocument(file, kioskModels)
 
       setClientOrder(parsed.order)
       setUploadedPreviewUrl(parsed.previewImageUrl || null)
-      setScanProgress(100)
       setIsScanning(false)
-      setScanStageText(
-        `스캔 완료 (${file.name}) → 거래처: ${parsed.order.clientName} / 품목 ${parsed.order.items.length}건 추출됨`
-      )
 
       // Automatically add extracted client to partners list if not already registered
       setPartners((prev) => {
@@ -344,16 +335,14 @@ function App() {
       })
 
       showToast(
-        `"${file.name}" 스캔 성공! [${parsed.order.clientName} / ${parsed.order.items
+        `"${file.name}" 접수 완료 · [${parsed.order.clientName} / ${parsed.order.items
           .map((i) => `${i.modelCode} ${i.quantity}대`)
           .join(', ')}] 정보가 반영되었습니다.`
       )
     } catch (err) {
       console.error('Document parse error:', err)
       setIsScanning(false)
-      setScanProgress(100)
-      setScanStageText('문서 분석 중 일부 항목을 기본값으로 대체했습니다.')
-      showToast('파일 스캔 중 오류가 발생하여 기본 양식으로 불러왔습니다.')
+      showToast('파일 분석 중 오류가 발생하여 기본 양식으로 불러왔습니다.')
     } finally {
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
@@ -1241,181 +1230,204 @@ function App() {
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col selection:bg-indigo-600 selection:text-white">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-slate-900 text-white text-base font-semibold shadow-2xl border border-slate-700">
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-slate-900 text-white text-sm font-medium shadow-2xl border border-slate-700">
           <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
           <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* Top Header & Prominent Tab Navigation */}
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur-md shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-3 space-y-4">
-          {/* Brand Title Row */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3.5">
-              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center shadow-md shadow-indigo-500/20">
-                <Cpu className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2.5">
-                  <h1 className="text-lg sm:text-xl font-extrabold tracking-tight text-slate-900">
-                    AI 키오스크 발주 자동화 시스템
-                  </h1>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    OCR 스캔 · BOM · PO 자동화
-                  </span>
-                </div>
-                <p className="text-sm text-slate-500">
-                  수주 발주서 스캔부터 BOM 자동 전개, 발주처별 PDF·엑셀 구매발주서 생성까지 한눈에 관리하세요
-                </p>
-              </div>
+      {/* Top Header */}
+      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur-md">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-xs">
+              <Cpu className="w-5 h-5 text-white" />
             </div>
-
-            {/* Active Client Pill */}
-            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 border border-slate-200 text-sm">
-              <Building2 className="w-4 h-4 text-indigo-600 shrink-0" />
-              <span className="text-slate-500">현재 수주처:</span>
-              <strong className="text-slate-900">{clientOrder.clientName}</strong>
-              <span className="text-indigo-600 font-bold">({totalKioskCount}대)</span>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-lg font-bold tracking-tight text-slate-900">
+                  키오스크 발주 관리 시스템
+                </h1>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200">
+                  무인민원발급기 · 스마트 키오스크
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-slate-500 font-normal">
+                발주서 접수 후 제품별 소요 자재(BOM)를 자동 산출하고 발주처별 구매발주서를 발행합니다
+              </p>
             </div>
           </div>
 
-          {/* 5 Main Step Tabs (One-Click Full Screen Switch) */}
-          <nav className="grid grid-cols-2 lg:grid-cols-5 gap-2.5">
+          {/* Workflow Status Summary Pill */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 border border-slate-200 text-xs sm:text-sm">
+              <Building2 className="w-4 h-4 text-indigo-600 shrink-0" />
+              <span className="text-slate-500">접수 거래처:</span>
+              <span className="font-semibold text-slate-900">{clientOrder.clientName}</span>
+              <span className="text-slate-300">|</span>
+              <span className="text-indigo-600 font-semibold">
+                키오스크 {clientOrder.items.length}종 ({totalKioskCount}대)
+              </span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Body with Left Sidebar Navigation + Right Content Area */}
+      <div className="flex-1 max-w-[1440px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col lg:flex-row gap-6 items-start">
+        {/* Left Sidebar Navigation */}
+        <aside className="w-full lg:w-64 shrink-0 lg:sticky lg:top-24 space-y-5">
+          {/* Primary Workflow Group: 발주서 접수 -> 자재 발주 */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-2xs space-y-2">
+            <div className="px-2.5 py-1 flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                발주 업무 플로우
+              </span>
+              <span className="text-[11px] text-indigo-600 font-medium">접수 → 자재 발주</span>
+            </div>
+
             <button
               type="button"
-              onClick={() => setActiveTab('STEP1_SCAN')}
-              className={`flex items-center justify-between px-4 py-3 rounded-xl text-left transition-all cursor-pointer border ${
-                activeTab === 'STEP1_SCAN'
-                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20'
-                  : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+              onClick={() => setActiveTab('ORDER_INTAKE')}
+              className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-left transition-all cursor-pointer border ${
+                activeTab === 'ORDER_INTAKE'
+                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                  : 'bg-white hover:bg-slate-50 text-slate-700 border-transparent'
               }`}
             >
               <div className="flex items-center gap-3 min-w-0">
-                <span
-                  className={`w-7 h-7 rounded-lg text-sm font-extrabold flex items-center justify-center shrink-0 ${
-                    activeTab === 'STEP1_SCAN'
-                      ? 'bg-white text-indigo-600'
-                      : 'bg-indigo-100 text-indigo-700'
+                <div
+                  className={`p-2 rounded-lg shrink-0 ${
+                    activeTab === 'ORDER_INTAKE'
+                      ? 'bg-white/15 text-white'
+                      : 'bg-indigo-50 text-indigo-600'
                   }`}
                 >
-                  1
-                </span>
+                  <FileCheck2 className="w-4 h-4" />
+                </div>
                 <div className="truncate">
-                  <div className="text-sm sm:text-base font-extrabold truncate">
-                    수주 발주서 스캔·입력
-                  </div>
+                  <div className="text-sm font-semibold truncate">발주서 접수</div>
                   <div
                     className={`text-xs truncate ${
-                      activeTab === 'STEP1_SCAN' ? 'text-indigo-100' : 'text-slate-500'
+                      activeTab === 'ORDER_INTAKE' ? 'text-indigo-100' : 'text-slate-500'
                     }`}
                   >
-                    거래처·주문 모델 ({clientOrder.items.length}종)
+                    주문 키오스크 {totalKioskCount}대
                   </div>
                 </div>
               </div>
-              <ArrowRight className="w-4 h-4 shrink-0 opacity-75 hidden sm:block" />
+              <ArrowRight
+                className={`w-4 h-4 shrink-0 ${
+                  activeTab === 'ORDER_INTAKE' ? 'text-white' : 'text-slate-300'
+                }`}
+              />
+            </button>
+
+            {/* Visual Connector Line */}
+            <div className="flex items-center gap-2 pl-7 py-0.5">
+              <div className="w-0.5 h-3.5 bg-indigo-200 rounded-full" />
+              <span className="text-[11px] text-slate-400">BOM 자동 산출 연동</span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('MATERIAL_ORDER')}
+              className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-left transition-all cursor-pointer border ${
+                activeTab === 'MATERIAL_ORDER'
+                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                  : 'bg-white hover:bg-slate-50 text-slate-700 border-transparent'
+              }`}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div
+                  className={`p-2 rounded-lg shrink-0 ${
+                    activeTab === 'MATERIAL_ORDER'
+                      ? 'bg-white/15 text-white'
+                      : 'bg-emerald-50 text-emerald-600'
+                  }`}
+                >
+                  <Send className="w-4 h-4" />
+                </div>
+                <div className="truncate">
+                  <div className="text-sm font-semibold truncate">자재 발주</div>
+                  <div
+                    className={`text-xs truncate ${
+                      activeTab === 'MATERIAL_ORDER' ? 'text-indigo-100' : 'text-slate-500'
+                    }`}
+                  >
+                    부품 {expandedBom.length}종 · 발주서 {purchaseOrders.length}건
+                  </div>
+                </div>
+              </div>
+              <ArrowRight
+                className={`w-4 h-4 shrink-0 ${
+                  activeTab === 'MATERIAL_ORDER' ? 'text-white' : 'text-slate-300'
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Management Menu Group: 제품·BOM 관리 / 재고 관리 / 거래처 관리 */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-2xs space-y-1.5">
+            <div className="px-2.5 py-1 flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                관리 메뉴
+              </span>
+              <span className="text-[11px] text-slate-400">기준 정보</span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('MANAGE_BOM')}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-left transition-all cursor-pointer ${
+                activeTab === 'MANAGE_BOM'
+                  ? 'bg-slate-900 text-white'
+                  : 'hover:bg-slate-50 text-slate-700'
+              }`}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <Layers
+                  className={`w-4 h-4 shrink-0 ${
+                    activeTab === 'MANAGE_BOM' ? 'text-violet-300' : 'text-violet-600'
+                  }`}
+                />
+                <div className="truncate">
+                  <div className="text-sm font-medium truncate">제품 · BOM 관리</div>
+                  <div
+                    className={`text-xs truncate ${
+                      activeTab === 'MANAGE_BOM' ? 'text-slate-300' : 'text-slate-400'
+                    }`}
+                  >
+                    키오스크 {kioskModels.length}종 · 대당 소요량
+                  </div>
+                </div>
+              </div>
             </button>
 
             <button
               type="button"
-              onClick={() => setActiveTab('STEP2_BOM')}
-              className={`flex items-center justify-between px-4 py-3 rounded-xl text-left transition-all cursor-pointer border ${
-                activeTab === 'STEP2_BOM'
-                  ? 'bg-violet-600 text-white border-violet-600 shadow-md shadow-violet-600/20'
-                  : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+              onClick={() => setActiveTab('MANAGE_INVENTORY')}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-left transition-all cursor-pointer ${
+                activeTab === 'MANAGE_INVENTORY'
+                  ? 'bg-slate-900 text-white'
+                  : 'hover:bg-slate-50 text-slate-700'
               }`}
             >
               <div className="flex items-center gap-3 min-w-0">
-                <span
-                  className={`w-7 h-7 rounded-lg text-sm font-extrabold flex items-center justify-center shrink-0 ${
-                    activeTab === 'STEP2_BOM'
-                      ? 'bg-white text-violet-600'
-                      : 'bg-violet-100 text-violet-700'
+                <Package
+                  className={`w-4 h-4 shrink-0 ${
+                    activeTab === 'MANAGE_INVENTORY' ? 'text-amber-300' : 'text-amber-600'
                   }`}
-                >
-                  2
-                </span>
+                />
                 <div className="truncate">
-                  <div className="text-sm sm:text-base font-extrabold truncate">
-                    BOM 자동 전개·편집
-                  </div>
-                  <div
-                    className={`text-xs truncate ${
-                      activeTab === 'STEP2_BOM' ? 'text-violet-100' : 'text-slate-500'
-                    }`}
-                  >
-                    부품 추가·수정·삭제 ({expandedBom.length}종)
-                  </div>
-                </div>
-              </div>
-              <ArrowRight className="w-4 h-4 shrink-0 opacity-75 hidden sm:block" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('STEP3_PO')}
-              className={`flex items-center justify-between px-4 py-3 rounded-xl text-left transition-all cursor-pointer border ${
-                activeTab === 'STEP3_PO'
-                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-600/20'
-                  : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
-              }`}
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <span
-                  className={`w-7 h-7 rounded-lg text-sm font-extrabold flex items-center justify-center shrink-0 ${
-                    activeTab === 'STEP3_PO'
-                      ? 'bg-white text-emerald-600'
-                      : 'bg-emerald-100 text-emerald-700'
-                  }`}
-                >
-                  3
-                </span>
-                <div className="truncate">
-                  <div className="text-sm sm:text-base font-extrabold truncate">
-                    매입 발주서(PO) 생성
-                  </div>
-                  <div
-                    className={`text-xs truncate ${
-                      activeTab === 'STEP3_PO' ? 'text-emerald-100' : 'text-slate-500'
-                    }`}
-                  >
-                    PDF·엑셀·인쇄·전송 ({purchaseOrders.length}건)
-                  </div>
-                </div>
-              </div>
-              <ArrowRight className="w-4 h-4 shrink-0 opacity-75 hidden sm:block" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('STEP4_INVENTORY')}
-              className={`flex items-center justify-between px-4 py-3 rounded-xl text-left transition-all cursor-pointer border ${
-                activeTab === 'STEP4_INVENTORY'
-                  ? 'bg-amber-600 text-white border-amber-600 shadow-md shadow-amber-600/20'
-                  : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
-              }`}
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <span
-                  className={`w-7 h-7 rounded-lg text-sm font-extrabold flex items-center justify-center shrink-0 ${
-                    activeTab === 'STEP4_INVENTORY'
-                      ? 'bg-white text-amber-600'
-                      : 'bg-amber-100 text-amber-700'
-                  }`}
-                >
-                  4
-                </span>
-                <div className="truncate">
-                  <div className="text-sm sm:text-base font-extrabold truncate flex items-center gap-1.5">
-                    <span>창고 재고 관리</span>
+                  <div className="text-sm font-medium truncate flex items-center gap-1.5">
+                    <span>재고 관리</span>
                     {inventoryStats.alertCount > 0 && (
                       <span
-                        className={`px-1.5 py-0.2 rounded-full text-[11px] font-black ${
-                          activeTab === 'STEP4_INVENTORY'
-                            ? 'bg-white text-amber-700'
-                            : 'bg-amber-500 text-white'
+                        className={`px-1.5 py-0.2 rounded-full text-[11px] font-medium ${
+                          activeTab === 'MANAGE_INVENTORY'
+                            ? 'bg-amber-400 text-slate-950'
+                            : 'bg-amber-100 text-amber-800'
                         }`}
                       >
                         부족 {inventoryStats.alertCount}
@@ -1424,563 +1436,1069 @@ function App() {
                   </div>
                   <div
                     className={`text-xs truncate ${
-                      activeTab === 'STEP4_INVENTORY' ? 'text-amber-100' : 'text-slate-500'
+                      activeTab === 'MANAGE_INVENTORY' ? 'text-slate-300' : 'text-slate-400'
                     }`}
                   >
-                    전체 {inventoryStats.total}종 · 실시간 입출고
+                    부품 {inventoryStats.total}종 · 창고 입출고
                   </div>
                 </div>
               </div>
-              <Package className="w-4 h-4 shrink-0 opacity-75 hidden sm:block" />
             </button>
 
             <button
               type="button"
-              onClick={() => setActiveTab('STEP4_MASTER')}
-              className={`flex items-center justify-between px-4 py-3 rounded-xl text-left transition-all cursor-pointer border ${
-                activeTab === 'STEP4_MASTER'
-                  ? 'bg-slate-900 text-white border-slate-900 shadow-md'
-                  : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+              onClick={() => setActiveTab('MANAGE_PARTNERS')}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-left transition-all cursor-pointer ${
+                activeTab === 'MANAGE_PARTNERS'
+                  ? 'bg-slate-900 text-white'
+                  : 'hover:bg-slate-50 text-slate-700'
               }`}
             >
               <div className="flex items-center gap-3 min-w-0">
-                <span
-                  className={`w-7 h-7 rounded-lg text-sm font-extrabold flex items-center justify-center shrink-0 ${
-                    activeTab === 'STEP4_MASTER'
-                      ? 'bg-white text-slate-900'
-                      : 'bg-slate-200 text-slate-700'
+                <Building2
+                  className={`w-4 h-4 shrink-0 ${
+                    activeTab === 'MANAGE_PARTNERS' ? 'text-indigo-300' : 'text-indigo-600'
                   }`}
-                >
-                  5
-                </span>
+                />
                 <div className="truncate">
-                  <div className="text-sm sm:text-base font-extrabold truncate">
-                    거래처·BOM 마스터
-                  </div>
+                  <div className="text-sm font-medium truncate">거래처 관리</div>
                   <div
                     className={`text-xs truncate ${
-                      activeTab === 'STEP4_MASTER' ? 'text-slate-300' : 'text-slate-500'
+                      activeTab === 'MANAGE_PARTNERS' ? 'text-slate-300' : 'text-slate-400'
                     }`}
                   >
-                    거래처 {partners.length}곳 · 모델 {kioskModels.length}종
+                    고객사 {clientPartners.length}곳 · 공급처 {supplierPartners.length}곳
                   </div>
                 </div>
               </div>
-              <Layers className="w-4 h-4 shrink-0 opacity-75 hidden sm:block" />
             </button>
-          </nav>
-        </div>
-      </header>
+          </div>
 
-      {/* Main Content Area (Single Focused View per Tab) */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* =====================================================================
-            TAB 1: 수주 발주서 스캔·입력 (거래처 수정/추가/삭제 + 주문 품목 관리)
-        ===================================================================== */}
-        {activeTab === 'STEP1_SCAN' && (
-          <section className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs space-y-6 p-6">
-            {/* Section Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-5">
-              <div>
-                <div className="flex items-center gap-2.5">
-                  <span className="px-3 py-1 rounded-lg text-sm font-extrabold bg-indigo-600 text-white">
-                    STEP 1
-                  </span>
-                  <h2 className="text-xl font-extrabold text-slate-900">
-                    거래처 수주 발주서 업로드 & AI 자동 스캔
-                  </h2>
-                </div>
-                <p className="text-sm text-slate-500 mt-1">
-                  거래처에서 받은 발주서 파일(PDF·엑셀·이미지)을 업로드하거나, 등록된 거래처 및 주문 키오스크 수량을 확인·수정하세요.
-                </p>
-              </div>
+          {/* Beginner Quick Guide Box */}
+          <div className="bg-indigo-50/60 border border-indigo-100 rounded-2xl p-4 space-y-2 text-xs text-slate-600 leading-relaxed">
+            <div className="font-semibold text-indigo-950 flex items-center gap-1.5">
+              <ClipboardList className="w-4 h-4 text-indigo-600" />
+              이용 안내
             </div>
+            <p>
+              1. <span className="font-medium text-slate-800">발주서 접수</span>에서 거래처 발주서 파일을 올리거나 주문 키오스크 모델·수량을 확인합니다.
+            </p>
+            <p>
+              2. <span className="font-medium text-slate-800">자재 발주</span>로 이동하면 모델별 BOM 부품 소요량이 자동 계산되며, 공급처별 발주서(PDF·엑셀)를 바로 발행할 수 있습니다.
+            </p>
+          </div>
+        </aside>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* Left Column: File Upload & AI Scan Status (4 cols) */}
-              <div className="lg:col-span-4 flex flex-col justify-between space-y-4">
-                <div
-                  onDragOver={(e) => {
-                    e.preventDefault()
-                    setIsDragging(true)
-                  }}
-                  onDragLeave={() => setIsDragging(false)}
-                  onDrop={(e) => {
-                    e.preventDefault()
-                    setIsDragging(false)
-                    const file = e.dataTransfer.files?.[0]
-                    handleFileUpload(file)
-                  }}
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`flex-1 flex flex-col items-center justify-center p-7 rounded-2xl border-2 border-dashed transition-all cursor-pointer text-center ${
-                    isDragging
-                      ? 'border-indigo-500 bg-indigo-50/70'
-                      : 'border-slate-300 hover:border-indigo-400 bg-slate-50/70 hover:bg-indigo-50/30'
-                  }`}
+        {/* Main Content Area */}
+        <main className="flex-1 min-w-0 w-full space-y-6">
+          {/* =====================================================================
+              1. 발주서 접수 (ORDER_INTAKE)
+          ===================================================================== */}
+          {activeTab === 'ORDER_INTAKE' && (
+            <section className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs space-y-6 p-6">
+              {/* Section Header */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-5">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">발주서 접수</h2>
+                  <p className="text-sm text-slate-500 mt-1">
+                    거래처에서 받은 수주 발주서 파일(엑셀·PDF·이미지)을 업로드하거나, 주문 키오스크 모델 및 수량을 입력해 접수하세요.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('MATERIAL_ORDER')}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-xs transition-all cursor-pointer shrink-0"
                 >
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".pdf,.png,.jpg,.jpeg,.xlsx,.xls,.csv"
-                    className="hidden"
-                    onChange={(e) => handleFileUpload(e.target.files?.[0])}
-                  />
-                  <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 mb-4 shadow-2xs">
-                    {isScanning ? (
-                      <RefreshCw className="w-8 h-8 animate-spin" />
-                    ) : (
-                      <UploadCloud className="w-8 h-8" />
-                    )}
-                  </div>
-                  <p className="text-base font-extrabold text-slate-900">
-                    거래처 발주서 파일을 이곳에 드래그하거나 클릭하여 업로드
-                  </p>
-                  <p className="text-sm text-slate-500 mt-1.5">
-                    지원 포맷: PDF, 이미지(JPG/PNG), Excel(XLSX/CSV)
-                  </p>
-
-                  <div className="mt-5 w-full px-4 py-3 rounded-xl bg-white border border-slate-200 flex items-center justify-between text-sm shadow-2xs">
-                    <span className="flex items-center gap-2 text-slate-800 font-semibold truncate">
-                      <FileCheck2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                      <span className="truncate">{clientOrder.sourceFileName}</span>
-                    </span>
-                    <span className="ml-2 px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono font-bold text-xs shrink-0">
-                      인식률 {clientOrder.confidenceScore}%
-                    </span>
-                  </div>
-                </div>
-
-                {/* AI OCR Progress Box */}
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-bold text-indigo-700 flex items-center gap-1.5">
-                      <ScanLine className="w-4 h-4" />
-                      AI 발주서 스캔 상태
-                    </span>
-                    <span className="font-mono font-bold text-slate-900">{scanProgress}%</span>
-                  </div>
-                  <div className="w-full h-2.5 rounded-full bg-slate-200 overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-indigo-600 via-violet-500 to-emerald-500 transition-all duration-300"
-                      style={{ width: `${scanProgress}%` }}
-                    />
-                  </div>
-                  <p className="text-xs sm:text-sm text-slate-600 font-medium">{scanStageText}</p>
-                </div>
-
-                {/* Uploaded Document Visual Preview (if PDF or Image uploaded) */}
-                {uploadedPreviewUrl && (
-                  <div className="p-3 rounded-xl bg-white border border-indigo-200 space-y-2 shadow-2xs">
-                    <div className="flex items-center justify-between text-xs font-bold text-indigo-700">
-                      <span>스캔된 원본 발주서 미리보기</span>
-                      <a
-                        href={uploadedPreviewUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="underline hover:text-indigo-900"
-                      >
-                        원본 크게 보기
-                      </a>
-                    </div>
-                    <img
-                      src={uploadedPreviewUrl}
-                      alt="Uploaded Order Preview"
-                      className="w-full max-h-56 object-contain rounded-lg border border-slate-200 bg-slate-50"
-                    />
-                  </div>
-                )}
+                  <span>자재 발주 진행하기</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
               </div>
 
-              {/* Right Column: Client Info CRUD & Ordered Kiosks (8 cols) */}
-              <div className="lg:col-span-8 space-y-6">
-                {/* Client Info Box with Select / Add / Edit / Delete */}
-                <div className="p-5 rounded-2xl bg-slate-50/80 border border-slate-200 space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="text-base font-extrabold text-indigo-900 flex items-center gap-2">
-                      <Building2 className="w-5 h-5 text-indigo-600" />
-                      발주 거래처(고객사) 정보 (수정·추가·삭제 가능)
-                    </h3>
-                    <button
-                      type="button"
-                      onClick={() => setShowAddClientForm((v) => !v)}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors cursor-pointer"
-                    >
-                      <UserPlus className="w-4 h-4" />
-                      {showAddClientForm ? '신규 등록 닫기' : '+ 새 거래처 등록'}
-                    </button>
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Left Column: Simple File Upload Dropzone (4 cols) */}
+                <div className="lg:col-span-4 flex flex-col justify-between space-y-4">
+                  <div
+                    onDragOver={(e) => {
+                      e.preventDefault()
+                      setIsDragging(true)
+                    }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      setIsDragging(false)
+                      const file = e.dataTransfer.files?.[0]
+                      handleFileUpload(file)
+                    }}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`flex-1 flex flex-col items-center justify-center p-7 rounded-2xl border-2 border-dashed transition-all cursor-pointer text-center min-h-[260px] ${
+                      isDragging
+                        ? 'border-indigo-500 bg-indigo-50/70'
+                        : 'border-slate-300 hover:border-indigo-400 bg-slate-50/60 hover:bg-indigo-50/20'
+                    }`}
+                  >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".pdf,.png,.jpg,.jpeg,.xlsx,.xls,.csv"
+                      className="hidden"
+                      onChange={(e) => handleFileUpload(e.target.files?.[0])}
+                    />
+                    <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 mb-4">
+                      {isScanning ? (
+                        <RefreshCw className="w-7 h-7 animate-spin" />
+                      ) : (
+                        <UploadCloud className="w-7 h-7" />
+                      )}
+                    </div>
+                    <p className="text-base font-semibold text-slate-900">
+                      {isScanning
+                        ? '발주서 파일 내용을 읽어오는 중입니다...'
+                        : '발주서 파일 업로드 (클릭 또는 드래그)'}
+                    </p>
+                    <p className="text-xs sm:text-sm text-slate-500 mt-1.5 leading-relaxed">
+                      PDF, Excel(XLSX/CSV), 이미지(JPG/PNG) 파일을 올리면 우측 거래처 정보와 주문 내역에 자동 반영됩니다.
+                    </p>
+
+                    <div className="mt-5 w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 flex items-center gap-2 text-xs sm:text-sm text-slate-700">
+                      <FileCheck2 className="w-4 h-4 text-indigo-600 shrink-0" />
+                      <span className="truncate font-medium">{clientOrder.sourceFileName}</span>
+                    </div>
                   </div>
 
-                  {/* Saved Client Partners Quick Chips (Select or Delete) */}
-                  <div className="flex items-center gap-2 flex-wrap pt-1">
-                    <span className="text-xs font-bold text-slate-500">등록된 고객사 선택:</span>
-                    {clientPartners.map((partner) => {
-                      const isSelected = clientOrder.clientName === partner.name
-                      return (
-                        <div
-                          key={partner.id}
-                          className={`inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 rounded-xl text-xs font-bold border transition-all ${
-                            isSelected
-                              ? 'bg-indigo-50 text-indigo-700 border-indigo-300'
-                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                          }`}
+                  {/* Uploaded Document Visual Preview (if PDF or Image uploaded) */}
+                  {uploadedPreviewUrl && (
+                    <div className="p-3 rounded-xl bg-white border border-slate-200 space-y-2">
+                      <div className="flex items-center justify-between text-xs font-medium text-slate-700">
+                        <span>첨부된 발주서 미리보기</span>
+                        <a
+                          href={uploadedPreviewUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-indigo-600 underline hover:text-indigo-800"
                         >
+                          크게 보기
+                        </a>
+                      </div>
+                      <img
+                        src={uploadedPreviewUrl}
+                        alt="Uploaded Order Preview"
+                        className="w-full max-h-56 object-contain rounded-lg border border-slate-200 bg-slate-50"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Right Column: Client Info & Ordered Kiosks (8 cols) */}
+                <div className="lg:col-span-8 space-y-6">
+                  {/* Client Info Box */}
+                  <div className="p-5 rounded-2xl bg-slate-50/70 border border-slate-200 space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2">
+                        <Building2 className="w-5 h-5 text-indigo-600" />
+                        수주 거래처(고객사) 정보
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={() => setShowAddClientForm((v) => !v)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 transition-colors cursor-pointer"
+                      >
+                        <UserPlus className="w-3.5 h-3.5 text-indigo-600" />
+                        {showAddClientForm ? '닫기' : '+ 신규 고객사 등록'}
+                      </button>
+                    </div>
+
+                    {/* Saved Client Partners Quick Chips */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs text-slate-500">등록 고객사 빠른 선택:</span>
+                      {clientPartners.map((partner) => {
+                        const isSelected = clientOrder.clientName === partner.name
+                        return (
+                          <div
+                            key={partner.id}
+                            className={`inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 rounded-lg text-xs font-medium border transition-all ${
+                              isSelected
+                                ? 'bg-indigo-50 text-indigo-700 border-indigo-300'
+                                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => handleSelectClientPartner(partner)}
+                              className="cursor-pointer"
+                            >
+                              {partner.name}
+                            </button>
+                            <button
+                              type="button"
+                              title="거래처 삭제"
+                              onClick={() => handleDeleteClientPartner(partner.id, partner.name)}
+                              className="p-0.5 rounded hover:bg-rose-100 text-slate-400 hover:text-rose-600 cursor-pointer"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    {/* Optional Quick Add New Client Form */}
+                    {showAddClientForm && (
+                      <div className="p-4 rounded-xl bg-indigo-50/60 border border-indigo-200 space-y-3">
+                        <div className="text-sm font-semibold text-indigo-950">
+                          신규 고객사 빠른 등록
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                          <input
+                            type="text"
+                            placeholder="거래처명 (필수)"
+                            value={newClientForm.name}
+                            onChange={(e) =>
+                              setNewClientForm({ ...newClientForm, name: e.target.value })
+                            }
+                            className="px-3 py-2 rounded-lg bg-white border border-indigo-200 text-slate-900"
+                          />
+                          <input
+                            type="text"
+                            placeholder="사업자번호 (예: 123-45-67890)"
+                            value={newClientForm.bizNo}
+                            onChange={(e) =>
+                              setNewClientForm({ ...newClientForm, bizNo: e.target.value })
+                            }
+                            className="px-3 py-2 rounded-lg bg-white border border-indigo-200 text-slate-900"
+                          />
+                          <input
+                            type="text"
+                            placeholder="담당자명 / 직책"
+                            value={newClientForm.manager}
+                            onChange={(e) =>
+                              setNewClientForm({ ...newClientForm, manager: e.target.value })
+                            }
+                            className="px-3 py-2 rounded-lg bg-white border border-indigo-200 text-slate-900"
+                          />
+                          <input
+                            type="text"
+                            placeholder="연락처 (예: 02-1234-5678)"
+                            value={newClientForm.phone}
+                            onChange={(e) =>
+                              setNewClientForm({ ...newClientForm, phone: e.target.value })
+                            }
+                            className="px-3 py-2 rounded-lg bg-white border border-indigo-200 text-slate-900"
+                          />
+                          <input
+                            type="email"
+                            placeholder="이메일"
+                            value={newClientForm.email}
+                            onChange={(e) =>
+                              setNewClientForm({ ...newClientForm, email: e.target.value })
+                            }
+                            className="px-3 py-2 rounded-lg bg-white border border-indigo-200 text-slate-900"
+                          />
+                          <input
+                            type="text"
+                            placeholder="기본 납품 주소"
+                            value={newClientForm.address}
+                            onChange={(e) =>
+                              setNewClientForm({ ...newClientForm, address: e.target.value })
+                            }
+                            className="px-3 py-2 rounded-lg bg-white border border-indigo-200 text-slate-900"
+                          />
+                        </div>
+                        <div className="flex justify-end gap-2">
                           <button
                             type="button"
-                            onClick={() => handleSelectClientPartner(partner)}
-                            className="cursor-pointer"
+                            onClick={() => setShowAddClientForm(false)}
+                            className="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-white text-slate-600 border border-slate-300 cursor-pointer"
                           >
-                            {partner.name}
+                            취소
                           </button>
                           <button
                             type="button"
-                            title="거래처 삭제"
-                            onClick={() => handleDeleteClientPartner(partner.id, partner.name)}
-                            className="p-0.5 rounded hover:bg-rose-100 text-slate-400 hover:text-rose-600 cursor-pointer"
+                            onClick={handleAddClientPartnerInStep1}
+                            className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white cursor-pointer"
                           >
-                            <X className="w-3.5 h-3.5" />
+                            저장 후 적용
                           </button>
                         </div>
-                      )
-                    })}
+                      </div>
+                    )}
+
+                    {/* Editable Client Info Inputs */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 text-sm">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">
+                          발주 거래처명 (상호)
+                        </label>
+                        <input
+                          type="text"
+                          value={clientOrder.clientName}
+                          onChange={(e) =>
+                            setClientOrder({ ...clientOrder, clientName: e.target.value })
+                          }
+                          className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 font-medium focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">
+                          사업자등록번호
+                        </label>
+                        <input
+                          type="text"
+                          value={clientOrder.businessNo}
+                          onChange={(e) =>
+                            setClientOrder({ ...clientOrder, businessNo: e.target.value })
+                          }
+                          className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 font-mono focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">
+                          문서번호 (발주번호)
+                        </label>
+                        <input
+                          type="text"
+                          value={clientOrder.orderNo}
+                          onChange={(e) =>
+                            setClientOrder({ ...clientOrder, orderNo: e.target.value })
+                          }
+                          className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-indigo-700 font-mono font-medium focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">
+                          담당자명
+                        </label>
+                        <input
+                          type="text"
+                          value={clientOrder.managerName}
+                          onChange={(e) =>
+                            setClientOrder({ ...clientOrder, managerName: e.target.value })
+                          }
+                          className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">
+                          연락처
+                        </label>
+                        <input
+                          type="text"
+                          value={clientOrder.managerPhone}
+                          onChange={(e) =>
+                            setClientOrder({ ...clientOrder, managerPhone: e.target.value })
+                          }
+                          className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">
+                          이메일
+                        </label>
+                        <input
+                          type="text"
+                          value={clientOrder.managerEmail}
+                          onChange={(e) =>
+                            setClientOrder({ ...clientOrder, managerEmail: e.target.value })
+                          }
+                          className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 font-mono focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">
+                          발주일자
+                        </label>
+                        <input
+                          type="date"
+                          value={clientOrder.orderDate}
+                          onChange={(e) =>
+                            setClientOrder({ ...clientOrder, orderDate: e.target.value })
+                          }
+                          className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">
+                          납기요청일
+                        </label>
+                        <input
+                          type="date"
+                          value={clientOrder.deliveryDate}
+                          onChange={(e) =>
+                            setClientOrder({ ...clientOrder, deliveryDate: e.target.value })
+                          }
+                          className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-indigo-700 font-medium focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">
+                          납품 장소
+                        </label>
+                        <input
+                          type="text"
+                          value={clientOrder.deliveryAddress}
+                          onChange={(e) =>
+                            setClientOrder({ ...clientOrder, deliveryAddress: e.target.value })
+                          }
+                          className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Optional Quick Add New Client Form */}
-                  {showAddClientForm && (
-                    <div className="p-4 rounded-xl bg-indigo-50/70 border border-indigo-200 space-y-3">
-                      <div className="text-sm font-bold text-indigo-900">
-                        신규 고객사(거래처) 빠른 등록
+                  {/* Ordered Kiosk Products Table */}
+                  <div className="p-5 rounded-2xl bg-slate-50/70 border border-slate-200 space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2">
+                          <ClipboardList className="w-5 h-5 text-indigo-600" />
+                          주문 키오스크 제품 및 수량
+                        </h3>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          선택한 키오스크 모델의 표준 BOM 구성에 따라 자재 발주 수량이 자동 계산됩니다.
+                        </p>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-                        <input
-                          type="text"
-                          placeholder="거래처명 (필수)"
-                          value={newClientForm.name}
-                          onChange={(e) =>
-                            setNewClientForm({ ...newClientForm, name: e.target.value })
-                          }
-                          className="px-3 py-2 rounded-lg bg-white border border-indigo-200 text-slate-900"
-                        />
-                        <input
-                          type="text"
-                          placeholder="사업자번호 (예: 123-45-67890)"
-                          value={newClientForm.bizNo}
-                          onChange={(e) =>
-                            setNewClientForm({ ...newClientForm, bizNo: e.target.value })
-                          }
-                          className="px-3 py-2 rounded-lg bg-white border border-indigo-200 text-slate-900"
-                        />
-                        <input
-                          type="text"
-                          placeholder="담당자명 / 직책"
-                          value={newClientForm.manager}
-                          onChange={(e) =>
-                            setNewClientForm({ ...newClientForm, manager: e.target.value })
-                          }
-                          className="px-3 py-2 rounded-lg bg-white border border-indigo-200 text-slate-900"
-                        />
-                        <input
-                          type="text"
-                          placeholder="연락처 (예: 02-1234-5678)"
-                          value={newClientForm.phone}
-                          onChange={(e) =>
-                            setNewClientForm({ ...newClientForm, phone: e.target.value })
-                          }
-                          className="px-3 py-2 rounded-lg bg-white border border-indigo-200 text-slate-900"
-                        />
-                        <input
-                          type="email"
-                          placeholder="이메일"
-                          value={newClientForm.email}
-                          onChange={(e) =>
-                            setNewClientForm({ ...newClientForm, email: e.target.value })
-                          }
-                          className="px-3 py-2 rounded-lg bg-white border border-indigo-200 text-slate-900"
-                        />
-                        <input
-                          type="text"
-                          placeholder="기본 납품 주소"
-                          value={newClientForm.address}
-                          onChange={(e) =>
-                            setNewClientForm({ ...newClientForm, address: e.target.value })
-                          }
-                          className="px-3 py-2 rounded-lg bg-white border border-indigo-200 text-slate-900"
-                        />
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('MANAGE_BOM')}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 transition-colors cursor-pointer"
+                        >
+                          <Layers className="w-3.5 h-3.5 text-violet-600" />
+                          제품 · BOM 관리
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleAddOrderItem}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          주문 품목 추가
+                        </button>
                       </div>
+                    </div>
+
+                    <div className="overflow-x-auto bg-white rounded-xl border border-slate-200">
+                      <table className="w-full text-left border-collapse text-sm">
+                        <thead>
+                          <tr className="bg-slate-100/80 border-b border-slate-200 text-slate-600">
+                            <th className="py-3 px-4 font-medium">키오스크 모델 선택</th>
+                            <th className="py-3 px-4 font-medium">규격 및 사양</th>
+                            <th className="py-3 px-4 text-center font-medium w-44">주문 수량</th>
+                            <th className="py-3 px-3 text-center font-medium w-16">삭제</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                          {clientOrder.items.map((item) => {
+                            const matchedModel = kioskModels.find(
+                              (m) => m.modelCode === item.modelCode
+                            )
+                            const modelStatus = matchedModel?.status || 'ACTIVE'
+                            return (
+                              <tr key={item.id} className="hover:bg-slate-50">
+                                <td className="py-3.5 px-4">
+                                  <select
+                                    value={item.modelCode}
+                                    onChange={(e) => handleModelChange(item.id, e.target.value)}
+                                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 font-medium text-sm focus:outline-none focus:border-indigo-500"
+                                  >
+                                    {kioskModels.map((m) => {
+                                      const st =
+                                        m.status === 'NEW'
+                                          ? '[신제품] '
+                                          : m.status === 'SOLD_OUT'
+                                            ? '[일시품절] '
+                                            : ''
+                                      return (
+                                        <option key={m.modelCode} value={m.modelCode}>
+                                          {st}[{m.modelCode}] {m.modelName} (BOM {m.bom.length}종)
+                                        </option>
+                                      )
+                                    })}
+                                  </select>
+                                  <div className="flex items-center gap-2 mt-1.5">
+                                    {modelStatus === 'NEW' && (
+                                      <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                        신제품
+                                      </span>
+                                    )}
+                                    {modelStatus === 'SOLD_OUT' && (
+                                      <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-rose-50 text-rose-700 border border-rose-200">
+                                        일시품절 모델
+                                      </span>
+                                    )}
+                                    {matchedModel && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setSelectedMasterModelCode(matchedModel.modelCode)
+                                          setActiveTab('MANAGE_BOM')
+                                        }}
+                                        className="text-xs font-medium text-indigo-600 hover:underline cursor-pointer"
+                                      >
+                                        구성 부품(BOM {matchedModel.bom.length}종) 상세 보기 →
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="py-3.5 px-4">
+                                  <input
+                                    type="text"
+                                    value={item.spec}
+                                    onChange={(e) =>
+                                      setClientOrder((prev) => ({
+                                        ...prev,
+                                        items: prev.items.map((it) =>
+                                          it.id === item.id ? { ...it, spec: e.target.value } : it
+                                        ),
+                                      }))
+                                    }
+                                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-slate-700 text-sm focus:outline-none focus:border-indigo-500"
+                                  />
+                                </td>
+                                <td className="py-3.5 px-4">
+                                  <div className="flex items-center justify-center gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
+                                      className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium cursor-pointer border border-slate-300 text-base"
+                                    >
+                                      -
+                                    </button>
+                                    <input
+                                      type="number"
+                                      min={1}
+                                      value={item.quantity}
+                                      onChange={(e) =>
+                                        handleQuantityChange(item.id, Number(e.target.value) || 1)
+                                      }
+                                      className="w-16 text-center py-1.5 rounded-lg bg-white border border-slate-300 text-slate-900 font-semibold text-base"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
+                                      className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium cursor-pointer border border-slate-300 text-base"
+                                    >
+                                      +
+                                    </button>
+                                    <span className="text-slate-600 text-sm ml-1">대</span>
+                                  </div>
+                                </td>
+                                <td className="py-3.5 px-3 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveOrderItem(item.id)}
+                                    className="p-2 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom CTA to Material Order */}
+              <div className="pt-4 border-t border-slate-200 flex items-center justify-between flex-wrap gap-3">
+                <span className="text-xs sm:text-sm text-slate-500">
+                  접수된 키오스크 총 <strong className="font-semibold text-slate-800">{totalKioskCount}대</strong>에 필요한 부품 소요량({expandedBom.length}종)과 발주처별 발주서({purchaseOrders.length}건)가 준비되었습니다.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('MATERIAL_ORDER')}
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm sm:text-base font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm transition-all cursor-pointer"
+                >
+                  <span>자재 발주 화면으로 이동 ({purchaseOrders.length}개 공급처 발주서 발행)</span>
+                  <ArrowRight className="w-5 h-5" />
+                </button>
+              </div>
+            </section>
+          )}
+
+          {/* =====================================================================
+              2. 자재 발주 (MATERIAL_ORDER: 소요 자재 BOM 확인·조정 + 공급처별 발주서 발행)
+          ===================================================================== */}
+          {activeTab === 'MATERIAL_ORDER' && (
+            <div className="space-y-6">
+              {/* Top Control Bar: Order Context + Sub-view Switcher */}
+              <section className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <h2 className="text-xl font-bold text-slate-900">자재 발주</h2>
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200">
+                      수주처: {clientOrder.clientName} ({totalKioskCount}대)
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      소요 자재 {expandedBom.length}종 · 발주처 {purchaseOrders.length}곳
+                    </span>
+                  </div>
+                  <p className="text-sm text-slate-500 mt-1">
+                    접수된 키오스크 수량에 맞춰 산출된 자재 내역을 확인·조정하고, 공급처별 구매발주서(PDF·엑셀·인쇄·전송)를 바로 발행하세요.
+                  </p>
+                </div>
+
+                {/* Quick View Mode Toggle */}
+                <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200 shrink-0">
+                  {(
+                    [
+                      { key: 'ALL', label: '전체 한눈에 보기' },
+                      { key: 'BOM_ONLY', label: `소요 자재 내역 (${expandedBom.length}종)` },
+                      { key: 'PO_ONLY', label: `발주처별 발주서 (${purchaseOrders.length}건)` },
+                    ] as const
+                  ).map((v) => (
+                    <button
+                      key={v.key}
+                      type="button"
+                      onClick={() => setMaterialSubView(v.key)}
+                      className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all cursor-pointer ${
+                        materialSubView === v.key
+                          ? 'bg-white text-slate-900 shadow-2xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      {v.label}
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              {/* Part A: 산출된 소요 자재(BOM) 확인 및 수량 조정 */}
+              {(materialSubView === 'ALL' || materialSubView === 'BOM_ONLY') && (
+                <section className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs space-y-5 p-6">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+                    <div>
+                      <h3 className="text-base sm:text-lg font-semibold text-slate-900 flex items-center gap-2">
+                        <Boxes className="w-5 h-5 text-indigo-600" />
+                        소요 자재(BOM) 산출 내역 및 발주수량 조정
+                      </h3>
+                      <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                        창고 현재고를 자동 차감하여 실제 발주할 수량을 계산합니다. 필요시 수량을 직접 수정하거나 품목을 추가할 수 있습니다.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium text-slate-700 cursor-pointer select-none bg-slate-50 px-3.5 py-2 rounded-xl border border-slate-200">
+                        <input
+                          type="checkbox"
+                          checked={deductStock}
+                          onChange={(e) => setDeductStock(e.target.checked)}
+                          className="rounded accent-indigo-600 w-4 h-4"
+                        />
+                        <span>창고 현재고 자동 차감</span>
+                      </label>
+
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('MANAGE_INVENTORY')}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition-colors cursor-pointer"
+                      >
+                        <Package className="w-4 h-4 text-amber-600" />
+                        재고 관리
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowAddBomModal((v) => !v)}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4" />
+                        자재 품목 추가
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Add Custom BOM Item Inline Form */}
+                  {showAddBomModal && (
+                    <div className="p-5 rounded-2xl bg-indigo-50/60 border border-indigo-200 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-semibold text-indigo-950 flex items-center gap-2">
+                          <Boxes className="w-4 h-4 text-indigo-600" />
+                          이번 발주에 추가할 자재 등록
+                        </h4>
+                        <button
+                          type="button"
+                          onClick={() => setShowAddBomModal(false)}
+                          className="text-slate-400 hover:text-slate-700 cursor-pointer"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-sm">
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1">
+                            부품코드
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="예: TAP-ETC-001 (미입력시 자동)"
+                            value={newBomPart.partCode}
+                            onChange={(e) =>
+                              setNewBomPart({ ...newBomPart, partCode: e.target.value })
+                            }
+                            className="w-full px-3 py-2 rounded-lg bg-white border border-indigo-200"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1">
+                            분류
+                          </label>
+                          <select
+                            value={newBomPart.category}
+                            onChange={(e) =>
+                              setNewBomPart({
+                                ...newBomPart,
+                                category: e.target.value as PartCategory,
+                              })
+                            }
+                            className="w-full px-3 py-2 rounded-lg bg-white border border-indigo-200 font-medium"
+                          >
+                            {PART_CATEGORIES.map((c) => (
+                              <option key={c} value={c}>
+                                {c}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="block text-xs font-medium text-slate-700 mb-1">
+                            부품명 (필수)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="예: 예비용 토너 카트리지"
+                            value={newBomPart.partName}
+                            onChange={(e) =>
+                              setNewBomPart({ ...newBomPart, partName: e.target.value })
+                            }
+                            className="w-full px-3 py-2 rounded-lg bg-white border border-indigo-200"
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="block text-xs font-medium text-slate-700 mb-1">
+                            상세 규격
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="예: 대용량 정품 토너"
+                            value={newBomPart.spec}
+                            onChange={(e) => setNewBomPart({ ...newBomPart, spec: e.target.value })}
+                            className="w-full px-3 py-2 rounded-lg bg-white border border-indigo-200"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1">
+                            필요수량 / 단위
+                          </label>
+                          <div className="flex gap-1.5">
+                            <input
+                              type="number"
+                              min={1}
+                              value={newBomPart.grossRequiredQty}
+                              onChange={(e) =>
+                                setNewBomPart({
+                                  ...newBomPart,
+                                  grossRequiredQty: Number(e.target.value) || 1,
+                                })
+                              }
+                              className="w-2/3 px-3 py-2 rounded-lg bg-white border border-indigo-200 font-medium"
+                            />
+                            <input
+                              type="text"
+                              value={newBomPart.unit}
+                              onChange={(e) =>
+                                setNewBomPart({ ...newBomPart, unit: e.target.value })
+                              }
+                              className="w-1/3 px-2 py-2 rounded-lg bg-white border border-indigo-200 text-center"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1">
+                            매입 발주처 선택
+                          </label>
+                          <select
+                            value={newBomPart.supplierId}
+                            onChange={(e) =>
+                              setNewBomPart({ ...newBomPart, supplierId: e.target.value })
+                            }
+                            className="w-full px-3 py-2 rounded-lg bg-white border border-indigo-200 font-medium"
+                          >
+                            {supplierPartners.map((s) => (
+                              <option key={s.id} value={s.id}>
+                                {s.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
                       <div className="flex justify-end gap-2">
                         <button
                           type="button"
-                          onClick={() => setShowAddClientForm(false)}
-                          className="px-3.5 py-1.5 rounded-lg text-sm font-semibold bg-white text-slate-600 border border-slate-300 cursor-pointer"
+                          onClick={() => setShowAddBomModal(false)}
+                          className="px-4 py-1.5 rounded-xl text-xs font-medium bg-white text-slate-600 border border-slate-300 cursor-pointer"
                         >
                           취소
                         </button>
                         <button
                           type="button"
-                          onClick={handleAddClientPartnerInStep1}
-                          className="px-4 py-1.5 rounded-lg text-sm font-bold bg-indigo-600 text-white cursor-pointer"
+                          onClick={handleAddCustomBomItem}
+                          className="px-4 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 text-white cursor-pointer"
                         >
-                          저장 후 현재 발주서에 적용
+                          목록에 추가
                         </button>
                       </div>
                     </div>
                   )}
 
-                  {/* Editable Client Info Inputs */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 text-sm">
-                    <div>
-                      <label className="block text-slate-600 font-semibold mb-1">
-                        발주 거래처명 (상호)
-                      </label>
-                      <input
-                        type="text"
-                        value={clientOrder.clientName}
-                        onChange={(e) =>
-                          setClientOrder({ ...clientOrder, clientName: e.target.value })
-                        }
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 font-bold focus:outline-none focus:border-indigo-500"
-                      />
+                  {/* Category Filter Bar */}
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {CATEGORIES.map((cat) => (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => setSelectedCategory(cat)}
+                          className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
+                            selectedCategory === cat
+                              ? 'bg-indigo-600 text-white'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200/80'
+                          }`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
                     </div>
-                    <div>
-                      <label className="block text-slate-600 font-semibold mb-1">
-                        사업자등록번호
-                      </label>
-                      <input
-                        type="text"
-                        value={clientOrder.businessNo}
-                        onChange={(e) =>
-                          setClientOrder({ ...clientOrder, businessNo: e.target.value })
-                        }
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 font-mono font-semibold focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-600 font-semibold mb-1">
-                        문서번호 (발주번호)
-                      </label>
-                      <input
-                        type="text"
-                        value={clientOrder.orderNo}
-                        onChange={(e) =>
-                          setClientOrder({ ...clientOrder, orderNo: e.target.value })
-                        }
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-indigo-700 font-mono font-bold focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-600 font-semibold mb-1">담당자명</label>
-                      <input
-                        type="text"
-                        value={clientOrder.managerName}
-                        onChange={(e) =>
-                          setClientOrder({ ...clientOrder, managerName: e.target.value })
-                        }
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 font-semibold focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-600 font-semibold mb-1">연락처</label>
-                      <input
-                        type="text"
-                        value={clientOrder.managerPhone}
-                        onChange={(e) =>
-                          setClientOrder({ ...clientOrder, managerPhone: e.target.value })
-                        }
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-600 font-semibold mb-1">이메일</label>
-                      <input
-                        type="text"
-                        value={clientOrder.managerEmail}
-                        onChange={(e) =>
-                          setClientOrder({ ...clientOrder, managerEmail: e.target.value })
-                        }
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 font-mono focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-600 font-semibold mb-1">발주일자</label>
-                      <input
-                        type="date"
-                        value={clientOrder.orderDate}
-                        onChange={(e) =>
-                          setClientOrder({ ...clientOrder, orderDate: e.target.value })
-                        }
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-600 font-semibold mb-1">납기요청일</label>
-                      <input
-                        type="date"
-                        value={clientOrder.deliveryDate}
-                        onChange={(e) =>
-                          setClientOrder({ ...clientOrder, deliveryDate: e.target.value })
-                        }
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 font-semibold text-indigo-700 focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-600 font-semibold mb-1">납품 장소</label>
-                      <input
-                        type="text"
-                        value={clientOrder.deliveryAddress}
-                        onChange={(e) =>
-                          setClientOrder({ ...clientOrder, deliveryAddress: e.target.value })
-                        }
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
-                  </div>
-                </div>
 
-                {/* Ordered Kiosk Products Table */}
-                <div className="p-5 rounded-2xl bg-slate-50/80 border border-slate-200 space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <h3 className="text-base font-extrabold text-indigo-900 flex items-center gap-2">
-                        <ClipboardList className="w-5 h-5 text-indigo-600" />
-                        스캔된 주문 키오스크 제품 및 수량 (총 {kioskModels.length}종 모델 연동)
-                      </h3>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        신제품 추가, 품절 설정 및 모델별 BOM(부품 소요량) 구성은 우측 버튼 또는 5번 탭에서 관리할 수 있습니다.
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
+                    {(Object.keys(manualOverrides).length > 0 ||
+                      deletedPartCodes.length > 0 ||
+                      customAddedBom.length > 0 ||
+                      Object.keys(partEdits).length > 0) && (
                       <button
                         type="button"
-                        onClick={() => setActiveTab('STEP4_MASTER')}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 transition-colors cursor-pointer"
+                        onClick={() => {
+                          setManualOverrides({})
+                          setDeletedPartCodes([])
+                          setCustomAddedBom([])
+                          setPartEdits({})
+                          setEditingPartCode(null)
+                          showToast('자재 수량 변경 사항이 초기 상태로 복원되었습니다.')
+                        }}
+                        className="text-xs sm:text-sm font-medium text-indigo-600 hover:text-indigo-800 underline cursor-pointer"
                       >
-                        <Layers className="w-3.5 h-3.5 text-violet-600" />
-                        신제품·품절·모델별 BOM 관리
+                        편집 내역 초기화
                       </button>
-                      <button
-                        type="button"
-                        onClick={handleAddOrderItem}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors cursor-pointer"
-                      >
-                        <Plus className="w-4 h-4" />
-                        주문 키오스크 추가
-                      </button>
-                    </div>
+                    )}
                   </div>
 
-                  <div className="overflow-x-auto bg-white rounded-xl border border-slate-200">
-                    <table className="w-full text-left border-collapse text-sm">
+                  {/* BOM Table */}
+                  <div className="overflow-x-auto rounded-xl border border-slate-200">
+                    <table className="w-full min-w-[1020px] text-left border-collapse text-sm">
                       <thead>
-                        <tr className="bg-slate-100 border-b border-slate-200 text-slate-700">
-                          <th className="py-3 px-4 font-bold">키오스크 모델 선택</th>
-                          <th className="py-3 px-4 font-bold">규격 및 사양</th>
-                          <th className="py-3 px-4 text-center font-bold w-44">주문 수량</th>
-                          <th className="py-3 px-3 text-center font-bold w-16">삭제</th>
+                        <tr className="bg-slate-100/80 text-slate-600 border-b border-slate-200 whitespace-nowrap">
+                          <th className="py-3 px-4 font-medium w-[145px]">부품코드 / 분류</th>
+                          <th className="py-3 px-4 font-medium min-w-[230px]">부품명 및 상세 규격</th>
+                          <th className="py-3 px-4 font-medium min-w-[180px]">산출 근거 (적용 모델)</th>
+                          <th className="py-3 px-4 text-right font-medium w-[110px]">총 필요수량</th>
+                          <th className="py-3 px-4 text-right font-medium w-[110px]">창고 현재고</th>
+                          <th className="py-3 px-4 text-center font-medium w-[135px]">실제 발주수량</th>
+                          <th className="py-3 px-4 font-medium min-w-[190px]">매입 발주처 (공급사)</th>
+                          <th className="py-3 px-3 text-center font-medium w-[90px]">관리</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200">
-                        {clientOrder.items.map((item) => {
-                          const matchedModel = kioskModels.find(
-                            (m) => m.modelCode === item.modelCode
-                          )
-                          const modelStatus = matchedModel?.status || 'ACTIVE'
+                        {filteredBom.map((part) => {
+                          const isEditing = editingPartCode === part.partCode
                           return (
-                            <tr key={item.id} className="hover:bg-slate-50">
-                              <td className="py-3.5 px-4">
-                                <select
-                                  value={item.modelCode}
-                                  onChange={(e) => handleModelChange(item.id, e.target.value)}
-                                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 font-bold text-sm focus:outline-none focus:border-indigo-500"
-                                >
-                                  {kioskModels.map((m) => {
-                                    const st =
-                                      m.status === 'NEW'
-                                        ? '[신제품] '
-                                        : m.status === 'SOLD_OUT'
-                                          ? '[일시품절] '
-                                          : ''
-                                    return (
-                                      <option key={m.modelCode} value={m.modelCode}>
-                                        {st}[{m.modelCode}] {m.modelName} (BOM {m.bom.length}종)
-                                      </option>
-                                    )
-                                  })}
-                                </select>
-                                <div className="flex items-center gap-2 mt-1.5">
-                                  {modelStatus === 'NEW' && (
-                                    <span className="px-2 py-0.5 rounded text-[11px] font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                                      NEW 신제품
-                                    </span>
-                                  )}
-                                  {modelStatus === 'SOLD_OUT' && (
-                                    <span className="px-2 py-0.5 rounded text-[11px] font-extrabold bg-rose-50 text-rose-700 border border-rose-200">
-                                      일시품절 설정된 모델입니다
-                                    </span>
-                                  )}
-                                  {matchedModel && (
+                            <tr key={part.partCode} className="hover:bg-slate-50/90 transition-colors">
+                              <td className="py-3.5 px-4 whitespace-nowrap align-middle">
+                                <div className="font-mono font-medium text-indigo-600 text-xs sm:text-sm">
+                                  {part.partCode}
+                                </div>
+                                <span className="inline-block mt-1 px-2 py-0.5 rounded text-xs font-normal bg-slate-100 text-slate-600 whitespace-nowrap">
+                                  {part.category}
+                                </span>
+                              </td>
+
+                              <td className="py-3.5 px-4 align-middle break-keep">
+                                {isEditing ? (
+                                  <div className="space-y-1.5">
+                                    <input
+                                      type="text"
+                                      value={part.partName}
+                                      onChange={(e) =>
+                                        handleUpdateBomField(part.partCode, 'partName', e.target.value)
+                                      }
+                                      className="w-full px-2.5 py-1 rounded-lg bg-white border border-indigo-400 font-medium text-slate-900"
+                                    />
+                                    <input
+                                      type="text"
+                                      value={part.spec}
+                                      onChange={(e) =>
+                                        handleUpdateBomField(part.partCode, 'spec', e.target.value)
+                                      }
+                                      className="w-full px-2.5 py-1 rounded-lg bg-white border border-slate-300 text-xs text-slate-700"
+                                    />
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div className="font-medium text-slate-900 text-sm sm:text-base break-keep">
+                                      {part.partName}
+                                    </div>
+                                    <div className="text-xs text-slate-500 mt-0.5 break-keep">
+                                      {part.spec}
+                                    </div>
+                                  </>
+                                )}
+                              </td>
+
+                              <td className="py-3.5 px-4 align-middle">
+                                <div className="flex flex-wrap gap-1.5">
+                                  {part.sourceModels.map((m) => (
                                     <button
+                                      key={m.modelCode}
                                       type="button"
+                                      title="클릭하여 해당 모델의 BOM 관리 화면으로 이동"
                                       onClick={() => {
-                                        setSelectedMasterModelCode(matchedModel.modelCode)
-                                        setActiveTab('STEP4_MASTER')
+                                        if (m.modelCode !== '수동추가') {
+                                          setSelectedMasterModelCode(m.modelCode)
+                                          setActiveTab('MANAGE_BOM')
+                                        }
                                       }}
-                                      className="text-xs font-bold text-violet-600 hover:underline cursor-pointer"
+                                      className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 border border-slate-200 font-normal text-xs whitespace-nowrap transition-colors cursor-pointer"
                                     >
-                                      표준 BOM {matchedModel.bom.length}종 구성 보기/수정 →
+                                      {m.modelCode}: {m.orderQty}대 × {m.qtyPerUnit ?? 1}
+                                      {part.unit} = <span className="font-medium">{m.subTotalQty}{part.unit}</span>
                                     </button>
-                                  )}
+                                  ))}
                                 </div>
                               </td>
-                              <td className="py-3.5 px-4">
-                                <input
-                                  type="text"
-                                  value={item.spec}
-                                  onChange={(e) =>
-                                    setClientOrder((prev) => ({
-                                      ...prev,
-                                      items: prev.items.map((it) =>
-                                        it.id === item.id ? { ...it, spec: e.target.value } : it
-                                      ),
-                                    }))
-                                  }
-                                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-slate-700 text-sm focus:outline-none focus:border-indigo-500"
-                                />
-                              </td>
-                              <td className="py-3.5 px-4">
-                                <div className="flex items-center justify-center gap-1.5">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
-                                    className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold cursor-pointer border border-slate-300 text-base"
-                                  >
-                                    -
-                                  </button>
+
+                              <td className="py-3.5 px-4 text-right font-mono font-medium text-slate-800 text-sm sm:text-base whitespace-nowrap align-middle">
+                                {isEditing ? (
                                   <input
                                     type="number"
-                                    min={1}
-                                    value={item.quantity}
+                                    min={0}
+                                    value={part.grossRequiredQty}
                                     onChange={(e) =>
-                                      handleQuantityChange(item.id, Number(e.target.value) || 1)
+                                      handleUpdateBomField(
+                                        part.partCode,
+                                        'grossRequiredQty',
+                                        Math.max(0, Number(e.target.value) || 0)
+                                      )
                                     }
-                                    className="w-16 text-center py-1.5 rounded-lg bg-white border border-slate-300 text-slate-900 font-extrabold text-base"
+                                    className="w-20 text-right px-2 py-1 rounded-lg bg-white border border-indigo-400 font-medium"
                                   />
-                                  <button
-                                    type="button"
-                                    onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
-                                    className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold cursor-pointer border border-slate-300 text-base"
-                                  >
-                                    +
-                                  </button>
-                                  <span className="text-slate-600 font-semibold ml-1">대</span>
+                                ) : (
+                                  <span>
+                                    {part.grossRequiredQty.toLocaleString()}{' '}
+                                    <span className="text-xs font-normal text-slate-500">{part.unit}</span>
+                                  </span>
+                                )}
+                              </td>
+
+                              <td className="py-3.5 px-4 text-right font-mono text-sm whitespace-nowrap align-middle">
+                                {isEditing ? (
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    value={part.stockQty}
+                                    onChange={(e) =>
+                                      handleUpdateBomField(
+                                        part.partCode,
+                                        'stockQty',
+                                        Math.max(0, Number(e.target.value) || 0)
+                                      )
+                                    }
+                                    className="w-16 text-right px-2 py-1 rounded-lg bg-white border border-emerald-400 font-medium"
+                                  />
+                                ) : (
+                                  <span className="inline-flex items-center justify-end gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200/80 text-emerald-700 font-medium whitespace-nowrap">
+                                    <span>{deductStock ? `-${part.stockQty}` : part.stockQty}</span>
+                                    <span className="text-xs font-normal">{part.unit}</span>
+                                  </span>
+                                )}
+                              </td>
+
+                              <td className="py-3.5 px-4 whitespace-nowrap align-middle">
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    value={part.adjustedOrderQty}
+                                    onChange={(e) =>
+                                      setManualOverrides((prev) => ({
+                                        ...prev,
+                                        [part.partCode]: Math.max(0, Number(e.target.value) || 0),
+                                      }))
+                                    }
+                                    className="w-20 text-center py-1.5 rounded-xl bg-indigo-50/70 border border-indigo-300 text-indigo-950 font-semibold text-base focus:outline-none focus:border-indigo-600"
+                                  />
+                                  <span className="text-slate-500 text-xs whitespace-nowrap">
+                                    {part.unit}
+                                  </span>
                                 </div>
                               </td>
-                              <td className="py-3.5 px-3 text-center">
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveOrderItem(item.id)}
-                                  className="p-2 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
+
+                              <td className="py-3.5 px-4 align-middle whitespace-nowrap">
+                                {isEditing ? (
+                                  <select
+                                    value={part.supplierId}
+                                    onChange={(e) =>
+                                      handleUpdateBomField(part.partCode, 'supplierId', e.target.value)
+                                    }
+                                    className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-indigo-400 font-medium text-slate-900 text-sm"
+                                  >
+                                    {supplierPartners.map((s) => (
+                                      <option key={s.id} value={s.id}>
+                                        {s.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <>
+                                    <div className="font-medium text-slate-900">{part.supplierName}</div>
+                                    <div className="text-xs text-slate-500 mt-0.5">
+                                      {part.supplierManager} ({part.supplierPhone}) · 납기{' '}
+                                      {part.leadTimeDays}일
+                                    </div>
+                                  </>
+                                )}
+                              </td>
+
+                              <td className="py-3.5 px-3 text-center whitespace-nowrap align-middle">
+                                <div className="flex items-center justify-center gap-1">
+                                  <button
+                                    type="button"
+                                    title={isEditing ? '수정 완료' : '부품 정보 수정'}
+                                    onClick={() =>
+                                      setEditingPartCode(isEditing ? null : part.partCode)
+                                    }
+                                    className={`p-2 rounded-lg transition-colors cursor-pointer ${
+                                      isEditing
+                                        ? 'bg-emerald-600 text-white'
+                                        : 'hover:bg-slate-100 text-slate-500 hover:text-indigo-600'
+                                    }`}
+                                  >
+                                    {isEditing ? (
+                                      <Check className="w-4 h-4" />
+                                    ) : (
+                                      <Pencil className="w-4 h-4" />
+                                    )}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    title="항목 삭제"
+                                    onClick={() => handleDeleteBomItem(part.partCode, part.partName)}
+                                    className="p-2 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           )
@@ -1988,1340 +2506,842 @@ function App() {
                       </tbody>
                     </table>
                   </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom Step Navigation Button */}
-            <div className="pt-4 border-t border-slate-200 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setActiveTab('STEP2_BOM')}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-base font-extrabold bg-violet-600 hover:bg-violet-500 text-white shadow-md shadow-violet-600/20 transition-all cursor-pointer"
-              >
-                <span>다음 단계: BOM 자동 전개 및 편집 ({expandedBom.length}종)</span>
-                <ArrowRight className="w-5 h-5" />
-              </button>
-            </div>
-          </section>
-        )}
-
-        {/* =====================================================================
-            TAB 2: 제품별 BOM 자동 전개·편집 (부품 추가/수정/삭제 지원)
-        ===================================================================== */}
-        {activeTab === 'STEP2_BOM' && (
-          <section className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs space-y-6 p-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-5">
-              <div>
-                <div className="flex items-center gap-2.5">
-                  <span className="px-3 py-1 rounded-lg text-sm font-extrabold bg-violet-600 text-white">
-                    STEP 2
-                  </span>
-                  <h2 className="text-xl font-extrabold text-slate-900">
-                    제품별 BOM(자재명세서) 자동 전개 및 편집
-                  </h2>
-                  <span className="text-sm px-3 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200 font-bold">
-                    총 {expandedBom.length}종 부품
-                  </span>
-                </div>
-                <p className="text-sm text-slate-500 mt-1">
-                  수주 키오스크({totalKioskCount}대) 기준으로 자동 전개된 부품 목록입니다. 부품을 직접 추가·수정·삭제할 수 있습니다.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2.5">
-                <label className="inline-flex items-center gap-2 text-sm font-bold text-slate-700 cursor-pointer select-none bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-200">
-                  <input
-                    type="checkbox"
-                    checked={deductStock}
-                    onChange={(e) => setDeductStock(e.target.checked)}
-                    className="rounded accent-violet-600 w-4 h-4"
-                  />
-                  <span>창고 현재고 자동 차감</span>
-                </label>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('STEP4_INVENTORY')}
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition-colors cursor-pointer"
-                >
-                  <Package className="w-4 h-4 text-amber-600" />
-                  창고 재고 관리 (현재고 조정)
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowAddBomModal((v) => !v)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold bg-violet-600 hover:bg-violet-500 text-white shadow-xs transition-colors cursor-pointer"
-                >
-                  <Plus className="w-4 h-4" />
-                  + BOM 부품 항목 추가
-                </button>
-              </div>
-            </div>
-
-            {/* Add Custom BOM Item Inline Form */}
-            {showAddBomModal && (
-              <div className="p-5 rounded-2xl bg-violet-50/70 border border-violet-200 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-base font-extrabold text-violet-950 flex items-center gap-2">
-                    <Boxes className="w-5 h-5 text-violet-600" />
-                    신규 BOM 부품 항목 추가
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={() => setShowAddBomModal(false)}
-                    className="text-slate-400 hover:text-slate-700 cursor-pointer"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-sm">
-                  <div>
-                    <label className="block text-slate-700 font-semibold mb-1">부품코드</label>
-                    <input
-                      type="text"
-                      placeholder="예: CBL-HDMI-2M (미입력시 자동)"
-                      value={newBomPart.partCode}
-                      onChange={(e) =>
-                        setNewBomPart({ ...newBomPart, partCode: e.target.value })
-                      }
-                      className="w-full px-3 py-2 rounded-lg bg-white border border-violet-200"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-700 font-semibold mb-1">카테고리</label>
-                    <select
-                      value={newBomPart.category}
-                      onChange={(e) =>
-                        setNewBomPart({
-                          ...newBomPart,
-                          category: e.target.value as PartCategory,
-                        })
-                      }
-                      className="w-full px-3 py-2 rounded-lg bg-white border border-violet-200 font-semibold"
-                    >
-                      {PART_CATEGORIES.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="block text-slate-700 font-semibold mb-1">
-                      부품명 (필수)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="예: 산업용 고내구성 HDMI 2.1 케이블"
-                      value={newBomPart.partName}
-                      onChange={(e) =>
-                        setNewBomPart({ ...newBomPart, partName: e.target.value })
-                      }
-                      className="w-full px-3 py-2 rounded-lg bg-white border border-violet-200 font-semibold"
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="block text-slate-700 font-semibold mb-1">상세 규격</label>
-                    <input
-                      type="text"
-                      placeholder="예: 2M, 골드플레이트, 노이즈 차폐 필터"
-                      value={newBomPart.spec}
-                      onChange={(e) => setNewBomPart({ ...newBomPart, spec: e.target.value })}
-                      className="w-full px-3 py-2 rounded-lg bg-white border border-violet-200"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-700 font-semibold mb-1">
-                      총 필요수량 / 단위
-                    </label>
-                    <div className="flex gap-1.5">
-                      <input
-                        type="number"
-                        min={1}
-                        value={newBomPart.grossRequiredQty}
-                        onChange={(e) =>
-                          setNewBomPart({
-                            ...newBomPart,
-                            grossRequiredQty: Number(e.target.value) || 1,
-                          })
-                        }
-                        className="w-2/3 px-3 py-2 rounded-lg bg-white border border-violet-200 font-bold"
-                      />
-                      <input
-                        type="text"
-                        value={newBomPart.unit}
-                        onChange={(e) => setNewBomPart({ ...newBomPart, unit: e.target.value })}
-                        className="w-1/3 px-2 py-2 rounded-lg bg-white border border-violet-200 text-center font-semibold"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-slate-700 font-semibold mb-1">
-                      매입 발주처 선택
-                    </label>
-                    <select
-                      value={newBomPart.supplierId}
-                      onChange={(e) =>
-                        setNewBomPart({ ...newBomPart, supplierId: e.target.value })
-                      }
-                      className="w-full px-3 py-2 rounded-lg bg-white border border-violet-200 font-semibold"
-                    >
-                      {supplierPartners.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowAddBomModal(false)}
-                    className="px-4 py-2 rounded-xl text-sm font-semibold bg-white text-slate-600 border border-slate-300 cursor-pointer"
-                  >
-                    취소
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleAddCustomBomItem}
-                    className="px-5 py-2 rounded-xl text-sm font-bold bg-violet-600 text-white cursor-pointer"
-                  >
-                    BOM 목록에 추가하기
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Category Filter Bar */}
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2 flex-wrap">
-                {CATEGORIES.map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setSelectedCategory(cat)}
-                    className={`px-3.5 py-2 rounded-xl text-sm font-bold transition-colors cursor-pointer ${
-                      selectedCategory === cat
-                        ? 'bg-violet-600 text-white shadow-2xs'
-                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200/80'
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-
-              {(Object.keys(manualOverrides).length > 0 ||
-                deletedPartCodes.length > 0 ||
-                customAddedBom.length > 0 ||
-                Object.keys(partEdits).length > 0) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setManualOverrides({})
-                    setDeletedPartCodes([])
-                    setCustomAddedBom([])
-                    setPartEdits({})
-                    setEditingPartCode(null)
-                    showToast('BOM 변경 사항이 초기 상태로 복원되었습니다.')
-                  }}
-                  className="text-sm font-bold text-violet-600 hover:text-violet-800 underline cursor-pointer"
-                >
-                  편집/삭제 내역 초기화
-                </button>
+                </section>
               )}
-            </div>
 
-            {/* BOM Table */}
-            <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="w-full min-w-[1040px] text-left border-collapse text-sm">
-                <thead>
-                  <tr className="bg-slate-100 text-slate-700 border-b border-slate-200 whitespace-nowrap">
-                    <th className="py-3.5 px-4 font-bold w-[150px]">부품코드 / 분류</th>
-                    <th className="py-3.5 px-4 font-bold min-w-[240px]">부품명 및 상세 규격</th>
-                    <th className="py-3.5 px-4 font-bold min-w-[180px]">산출 근거 (적용 키오스크)</th>
-                    <th className="py-3.5 px-4 text-right font-bold w-[115px]">총 필요수량</th>
-                    <th className="py-3.5 px-4 text-right font-bold w-[110px]">창고 현재고</th>
-                    <th className="py-3.5 px-4 text-center font-bold w-[140px]">실제 발주수량</th>
-                    <th className="py-3.5 px-4 font-bold min-w-[200px]">매입 발주처 (공급사)</th>
-                    <th className="py-3.5 px-3 text-center font-bold w-[96px]">수정·삭제</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {filteredBom.map((part) => {
-                    const isEditing = editingPartCode === part.partCode
-                    return (
-                      <tr key={part.partCode} className="hover:bg-slate-50/90 transition-colors">
-                        <td className="py-4 px-4 whitespace-nowrap align-middle">
-                          <div className="font-mono font-bold text-indigo-600 text-sm">
-                            {part.partCode}
-                          </div>
-                          <span className="inline-block mt-1 px-2.5 py-0.5 rounded-md text-xs font-semibold bg-slate-100 text-slate-700 whitespace-nowrap">
-                            {part.category}
-                          </span>
-                        </td>
-
-                        <td className="py-4 px-4 align-middle break-keep">
-                          {isEditing ? (
-                            <div className="space-y-1.5">
-                              <input
-                                type="text"
-                                value={part.partName}
-                                onChange={(e) =>
-                                  handleUpdateBomField(part.partCode, 'partName', e.target.value)
-                                }
-                                className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-violet-400 font-bold text-slate-900"
-                              />
-                              <input
-                                type="text"
-                                value={part.spec}
-                                onChange={(e) =>
-                                  handleUpdateBomField(part.partCode, 'spec', e.target.value)
-                                }
-                                className="w-full px-2.5 py-1 rounded-lg bg-white border border-slate-300 text-xs text-slate-700"
-                              />
-                            </div>
-                          ) : (
-                            <>
-                              <div className="font-bold text-slate-900 text-base break-keep">
-                                {part.partName}
-                              </div>
-                              <div className="text-xs sm:text-sm text-slate-500 mt-0.5 break-keep">
-                                {part.spec}
-                              </div>
-                            </>
-                          )}
-                        </td>
-
-                        <td className="py-4 px-4 align-middle">
-                          <div className="flex flex-wrap gap-1.5">
-                            {part.sourceModels.map((m) => (
-                              <button
-                                key={m.modelCode}
-                                type="button"
-                                title="클릭하여 이 모델의 대당 BOM 소요량 관리 화면으로 이동"
-                                onClick={() => {
-                                  if (m.modelCode !== '수동추가') {
-                                    setSelectedMasterModelCode(m.modelCode)
-                                    setActiveTab('STEP4_MASTER')
-                                  }
-                                }}
-                                className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-100 font-semibold text-xs whitespace-nowrap transition-colors cursor-pointer"
-                              >
-                                {m.modelCode}: {m.orderQty}대 × 대당 {m.qtyPerUnit ?? 1}
-                                {part.unit} = {m.subTotalQty} {part.unit}
-                              </button>
-                            ))}
-                          </div>
-                        </td>
-
-                        <td className="py-4 px-4 text-right font-mono font-bold text-slate-800 text-base whitespace-nowrap align-middle">
-                          {isEditing ? (
-                            <input
-                              type="number"
-                              min={0}
-                              value={part.grossRequiredQty}
-                              onChange={(e) =>
-                                handleUpdateBomField(
-                                  part.partCode,
-                                  'grossRequiredQty',
-                                  Math.max(0, Number(e.target.value) || 0)
-                                )
-                              }
-                              className="w-20 text-right px-2 py-1 rounded-lg bg-white border border-violet-400 font-bold"
-                            />
-                          ) : (
-                            <span>
-                              {part.grossRequiredQty.toLocaleString()}{' '}
-                              <span className="text-xs font-semibold text-slate-500">{part.unit}</span>
-                            </span>
-                          )}
-                        </td>
-
-                        <td className="py-4 px-4 text-right font-mono font-bold text-emerald-600 text-sm whitespace-nowrap align-middle">
-                          {isEditing ? (
-                            <input
-                              type="number"
-                              min={0}
-                              value={part.stockQty}
-                              onChange={(e) =>
-                                handleUpdateBomField(
-                                  part.partCode,
-                                  'stockQty',
-                                  Math.max(0, Number(e.target.value) || 0)
-                                )
-                              }
-                              className="w-16 text-right px-2 py-1 rounded-lg bg-white border border-emerald-400 font-bold"
-                            />
-                          ) : (
-                            <span className="inline-flex items-center justify-end gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200/80 text-emerald-700 whitespace-nowrap">
-                              <span>{deductStock ? `-${part.stockQty}` : part.stockQty}</span>
-                              <span className="text-xs font-semibold">{part.unit}</span>
-                            </span>
-                          )}
-                        </td>
-
-                        <td className="py-4 px-4 whitespace-nowrap align-middle">
-                          <div className="flex items-center justify-center gap-1.5">
-                            <input
-                              type="number"
-                              min={0}
-                              value={part.adjustedOrderQty}
-                              onChange={(e) =>
-                                setManualOverrides((prev) => ({
-                                  ...prev,
-                                  [part.partCode]: Math.max(0, Number(e.target.value) || 0),
-                                }))
-                              }
-                              className="w-20 text-center py-1.5 rounded-xl bg-violet-50 border border-violet-300 text-violet-950 font-black text-base focus:outline-none focus:border-violet-600"
-                            />
-                            <span className="text-slate-600 font-semibold text-xs whitespace-nowrap">
-                              {part.unit}
-                            </span>
-                          </div>
-                        </td>
-
-                        <td className="py-4 px-4 align-middle whitespace-nowrap">
-                          {isEditing ? (
-                            <select
-                              value={part.supplierId}
-                              onChange={(e) =>
-                                handleUpdateBomField(part.partCode, 'supplierId', e.target.value)
-                              }
-                              className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-violet-400 font-bold text-slate-900 text-sm"
-                            >
-                              {supplierPartners.map((s) => (
-                                <option key={s.id} value={s.id}>
-                                  {s.name}
-                                </option>
-                              ))}
-                            </select>
-                          ) : (
-                            <>
-                              <div className="font-bold text-slate-900">{part.supplierName}</div>
-                              <div className="text-xs text-slate-500 mt-0.5">
-                                {part.supplierManager} ({part.supplierPhone}) · 납기{' '}
-                                {part.leadTimeDays}일
-                              </div>
-                            </>
-                          )}
-                        </td>
-
-                        <td className="py-4 px-3 text-center whitespace-nowrap align-middle">
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              type="button"
-                              title={isEditing ? '수정 완료' : '부품 정보 수정'}
-                              onClick={() =>
-                                setEditingPartCode(isEditing ? null : part.partCode)
-                              }
-                              className={`p-2 rounded-lg transition-colors cursor-pointer ${
-                                isEditing
-                                  ? 'bg-emerald-600 text-white'
-                                  : 'hover:bg-violet-100 text-slate-500 hover:text-violet-700'
-                              }`}
-                            >
-                              {isEditing ? (
-                                <Check className="w-4 h-4" />
-                              ) : (
-                                <Pencil className="w-4 h-4" />
-                              )}
-                            </button>
-                            <button
-                              type="button"
-                              title="BOM 항목 삭제"
-                              onClick={() => handleDeleteBomItem(part.partCode, part.partName)}
-                              className="p-2 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Bottom Step Navigation */}
-            <div className="pt-4 border-t border-slate-200 flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => setActiveTab('STEP1_SCAN')}
-                className="px-5 py-2.5 rounded-xl text-sm font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer"
-              >
-                ← 이전: 수주 발주서 스캔 화면
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('STEP3_PO')}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-base font-extrabold bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
-              >
-                <span>다음 단계: 생성된 매입 발주서({purchaseOrders.length}건) 확인 및 발송</span>
-                <ArrowRight className="w-5 h-5" />
-              </button>
-            </div>
-          </section>
-        )}
-
-        {/* =====================================================================
-            TAB 3: 발주처별 매입 발주서(PO) 생성·인쇄·PDF/엑셀 다운로드·PDF 전송
-        ===================================================================== */}
-        {activeTab === 'STEP3_PO' && (
-          <section className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs space-y-6 p-6">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-200 pb-5">
-              <div>
-                <div className="flex items-center gap-2.5">
-                  <span className="px-3 py-1 rounded-lg text-sm font-extrabold bg-emerald-600 text-white">
-                    STEP 3
-                  </span>
-                  <h2 className="text-xl font-extrabold text-slate-900">
-                    발주처별 매입 발주서(PO) 자동 생성 및 발송
-                  </h2>
-                  <span className="text-sm px-3 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold">
-                    총 {purchaseOrders.length}개 발주처 파일
-                  </span>
-                </div>
-                <p className="text-sm text-slate-500 mt-1">
-                  업체별로 자동 작성된 구매발주서입니다. <strong>PDF 다운로드</strong>, <strong>엑셀(.xlsx) 다운로드</strong>, <strong>프린트(인쇄)</strong> 및 <strong>PDF 파일 이메일 전송</strong>을 지원합니다.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2.5">
-                <button
-                  type="button"
-                  onClick={handleDownloadAllExcel}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-all cursor-pointer"
-                >
-                  <FileSpreadsheet className="w-4 h-4" />
-                  전체 엑셀(.xlsx) 일괄 다운로드
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSendAllPdfEmails}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-extrabold bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm shadow-indigo-600/20 transition-all cursor-pointer"
-                >
-                  <Send className="w-4 h-4" />
-                  전체 발주처로 PDF 발주서 일괄 전송 ({purchaseOrders.length}곳)
-                </button>
-              </div>
-            </div>
-
-            {/* Generated PO Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {purchaseOrders.map((po) => (
-                <div
-                  key={po.poNumber}
-                  className="flex flex-col justify-between rounded-2xl bg-white border-2 border-slate-200 hover:border-indigo-400 transition-all overflow-hidden shadow-xs"
-                >
-                  {/* Top Decorative Strip */}
-                  <div className="h-1.5 w-full bg-gradient-to-r from-indigo-600 via-violet-500 to-emerald-500" />
-
-                  <div className="p-6 space-y-4 flex-1">
-                    {/* Card Header */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="p-3 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 shrink-0">
-                          <FileText className="w-6 h-6" />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-mono font-bold text-indigo-600">
-                              {po.poNumber}
-                            </span>
-                            <span className="text-xs text-slate-400">|</span>
-                            <span className="text-xs font-semibold text-slate-600">
-                              납기요청: {po.requestedDeliveryDate}
-                            </span>
-                          </div>
-                          <h3 className="text-lg font-extrabold text-slate-900 truncate mt-0.5">
-                            {po.supplierName} 귀하
-                          </h3>
-                        </div>
-                      </div>
-
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-extrabold shrink-0 ${
-                          po.status === 'SENT'
-                            ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-                            : po.status === 'DOWNLOADED'
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              : 'bg-amber-50 text-amber-700 border border-amber-200'
-                        }`}
-                      >
-                        {po.status === 'SENT'
-                          ? 'PDF 전송 완료'
-                          : po.status === 'DOWNLOADED'
-                            ? '다운로드 완료'
-                            : '발주서 생성됨'}
-                      </span>
-                    </div>
-
-                    {/* PDF & Excel File Names */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                      <div className="px-3 py-2 rounded-xl bg-rose-50/70 border border-rose-200/80 text-rose-800 font-mono font-semibold truncate flex items-center gap-1.5">
-                        <FileText className="w-4 h-4 text-rose-600 shrink-0" />
-                        <span className="truncate">{po.pdfFileName}</span>
-                      </div>
-                      <div className="px-3 py-2 rounded-xl bg-emerald-50/70 border border-emerald-200/80 text-emerald-800 font-mono font-semibold truncate flex items-center gap-1.5">
-                        <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0" />
-                        <span className="truncate">{po.excelFileName}</span>
-                      </div>
-                    </div>
-
-                    {/* Supplier Metadata */}
-                    <div className="text-sm text-slate-600 grid grid-cols-1 sm:grid-cols-2 gap-2 bg-slate-50 p-3.5 rounded-xl border border-slate-200/80">
-                      <div>
-                        • 담당자: <strong className="text-slate-900">{po.supplierManager}</strong>
-                      </div>
-                      <div>
-                        • 연락처: <strong className="text-slate-900">{po.supplierPhone}</strong>
-                      </div>
-                      <div className="sm:col-span-2">
-                        • 수신 이메일:{' '}
-                        <strong className="font-mono text-indigo-700">{po.supplierEmail}</strong>
-                      </div>
-                    </div>
-
-                    {/* Included BOM Parts Table inside PO Card */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm font-bold text-slate-700">
-                        <span>발주 품목 내역 ({po.totalItemTypes}종)</span>
-                        <span className="text-indigo-700">
-                          총 발주수량 {po.totalOrderQty.toLocaleString()}개
+              {/* Part B: 발주처별 매입 발주서(PO) 발행 및 전송 */}
+              {(materialSubView === 'ALL' || materialSubView === 'PO_ONLY') && (
+                <section className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs space-y-6 p-6">
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+                    <div>
+                      <div className="flex items-center gap-2.5">
+                        <FileText className="w-5 h-5 text-emerald-600" />
+                        <h3 className="text-base sm:text-lg font-semibold text-slate-900">
+                          발주처별 구매발주서(PO) 발행 및 전송
+                        </h3>
+                        <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium">
+                          총 {purchaseOrders.length}개 공급처
                         </span>
                       </div>
-                      <div className="border border-slate-200 rounded-xl overflow-hidden">
-                        <table className="w-full text-left border-collapse text-sm">
-                          <thead>
-                            <tr className="bg-slate-100 text-slate-600 border-b border-slate-200 text-xs">
-                              <th className="py-2 px-3 font-bold">부품코드</th>
-                              <th className="py-2 px-3 font-bold">품목명</th>
-                              <th className="py-2 px-3 font-bold text-right">발주수량</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-200/70">
-                            {po.items.map((item) => (
-                              <tr key={item.partCode} className="bg-white">
-                                <td className="py-2 px-3 font-mono font-bold text-indigo-600 text-xs">
-                                  {item.partCode}
-                                </td>
-                                <td className="py-2 px-3 font-semibold text-slate-800 truncate max-w-[200px]">
-                                  {item.partName}
-                                </td>
-                                <td className="py-2 px-3 text-right font-mono font-extrabold text-slate-900">
-                                  {item.adjustedOrderQty.toLocaleString()} {item.unit}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                      <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                        위 소요 자재 수량에 따라 공급업체별로 자동 분류된 발주서입니다. 양식 보기, PDF/엑셀 저장, 인쇄 및 이메일 발송을 지원합니다.
+                      </p>
                     </div>
-                  </div>
 
-                  {/* Card Footer Action Buttons (Preview, Print, PDF, Excel, Send PDF) */}
-                  <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 space-y-2.5">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => setPreviewPo(po)}
-                        className="inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-sm font-bold bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 transition-colors cursor-pointer"
-                      >
-                        <Eye className="w-4 h-4 text-indigo-600" />
-                        양식 보기
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handlePrintPo(po)}
-                        className="inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-sm font-bold bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 transition-colors cursor-pointer"
-                      >
-                        <Printer className="w-4 h-4 text-slate-700" />
-                        프린트
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDownloadPdf(po)}
-                        className="inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-sm font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors cursor-pointer"
-                      >
-                        <Download className="w-4 h-4" />
-                        PDF 저장
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDownloadExcel(po)}
-                        className="inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-sm font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-colors cursor-pointer"
+                        onClick={handleDownloadAllExcel}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-medium bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-all cursor-pointer"
                       >
                         <FileSpreadsheet className="w-4 h-4" />
-                        엑셀 저장
+                        전체 엑셀(.xlsx) 일괄 저장
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSendAllPdfEmails}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-2xs transition-all cursor-pointer"
+                      >
+                        <Send className="w-4 h-4" />
+                        전체 공급처로 PDF 발주서 일괄 전송 ({purchaseOrders.length}곳)
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Generated PO Cards Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {purchaseOrders.map((po) => (
+                      <div
+                        key={po.poNumber}
+                        className="flex flex-col justify-between rounded-2xl bg-white border border-slate-200 hover:border-indigo-300 transition-all overflow-hidden shadow-2xs"
+                      >
+                        <div className="h-1 w-full bg-indigo-600" />
+
+                        <div className="p-5 space-y-4 flex-1">
+                          {/* Card Header */}
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 shrink-0">
+                                <FileText className="w-5 h-5" />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 text-xs text-slate-500">
+                                  <span className="font-mono font-medium text-indigo-600">
+                                    {po.poNumber}
+                                  </span>
+                                  <span>|</span>
+                                  <span>납기요청: {po.requestedDeliveryDate}</span>
+                                </div>
+                                <h4 className="text-base font-semibold text-slate-900 truncate mt-0.5">
+                                  {po.supplierName} 귀하
+                                </h4>
+                              </div>
+                            </div>
+
+                            <span
+                              className={`px-2.5 py-0.5 rounded-full text-xs font-medium shrink-0 ${
+                                po.status === 'SENT'
+                                  ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                                  : po.status === 'DOWNLOADED'
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                    : 'bg-slate-100 text-slate-700 border border-slate-200'
+                              }`}
+                            >
+                              {po.status === 'SENT'
+                                ? '전송 완료'
+                                : po.status === 'DOWNLOADED'
+                                  ? '저장 완료'
+                                  : '발행 준비'}
+                            </span>
+                          </div>
+
+                          {/* Supplier Metadata */}
+                          <div className="text-xs sm:text-sm text-slate-600 grid grid-cols-1 sm:grid-cols-2 gap-1.5 bg-slate-50 p-3 rounded-xl border border-slate-200/70">
+                            <div>
+                              담당자: <span className="font-medium text-slate-900">{po.supplierManager}</span>
+                            </div>
+                            <div>
+                              연락처: <span className="font-medium text-slate-900">{po.supplierPhone}</span>
+                            </div>
+                            <div className="sm:col-span-2">
+                              이메일: <span className="font-mono text-indigo-600">{po.supplierEmail}</span>
+                            </div>
+                          </div>
+
+                          {/* Included BOM Parts Table inside PO Card */}
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between text-xs sm:text-sm font-medium text-slate-700">
+                              <span>발주 품목 ({po.totalItemTypes}종)</span>
+                              <span className="text-indigo-600">
+                                합계 {po.totalOrderQty.toLocaleString()}개
+                              </span>
+                            </div>
+                            <div className="border border-slate-200 rounded-xl overflow-hidden">
+                              <table className="w-full text-left border-collapse text-xs sm:text-sm">
+                                <thead>
+                                  <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 text-xs">
+                                    <th className="py-2 px-3 font-medium">부품코드</th>
+                                    <th className="py-2 px-3 font-medium">품목명</th>
+                                    <th className="py-2 px-3 font-medium text-right">발주수량</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-200/70">
+                                  {po.items.map((item) => (
+                                    <tr key={item.partCode} className="bg-white">
+                                      <td className="py-2 px-3 font-mono text-indigo-600 text-xs">
+                                        {item.partCode}
+                                      </td>
+                                      <td className="py-2 px-3 text-slate-800 truncate max-w-[200px]">
+                                        {item.partName}
+                                      </td>
+                                      <td className="py-2 px-3 text-right font-mono font-semibold text-slate-900">
+                                        {item.adjustedOrderQty.toLocaleString()} {item.unit}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Card Footer Action Buttons */}
+                        <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-200 space-y-2">
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setPreviewPo(po)}
+                              className="inline-flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl text-xs sm:text-sm font-medium bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 transition-colors cursor-pointer"
+                            >
+                              <Eye className="w-4 h-4 text-indigo-600" />
+                              양식 보기
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handlePrintPo(po)}
+                              className="inline-flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl text-xs sm:text-sm font-medium bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 transition-colors cursor-pointer"
+                            >
+                              <Printer className="w-4 h-4 text-slate-600" />
+                              프린트
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadPdf(po)}
+                              className="inline-flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl text-xs sm:text-sm font-medium bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors cursor-pointer"
+                            >
+                              <Download className="w-4 h-4" />
+                              PDF 저장
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadExcel(po)}
+                              className="inline-flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl text-xs sm:text-sm font-medium bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-colors cursor-pointer"
+                            >
+                              <FileSpreadsheet className="w-4 h-4" />
+                              엑셀 저장
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleSendPoPdfEmail(po)}
+                              className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs sm:text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors cursor-pointer"
+                            >
+                              <Send className="w-3.5 h-3.5" />
+                              PDF 발주서 이메일 전송
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleReceivePoItems(po)}
+                              disabled={Boolean(poReceivedMap[po.poNumber])}
+                              className={`w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-medium border transition-colors cursor-pointer ${
+                                poReceivedMap[po.poNumber]
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 cursor-default'
+                                  : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-200'
+                              }`}
+                            >
+                              <PackageCheck className="w-3.5 h-3.5" />
+                              {poReceivedMap[po.poNumber]
+                                ? '창고 입고 반영됨'
+                                : `입고 완료 처리 (+${po.totalOrderQty}개)`}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+            </div>
+          )}
+
+          {/* =====================================================================
+              3. 재고 관리 (MANAGE_INVENTORY: 부품 창고 현재고 및 입·출고 관리)
+          ===================================================================== */}
+          {activeTab === 'MANAGE_INVENTORY' && (
+            <div className="space-y-6">
+              <section className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs space-y-6 p-6">
+                {/* Header */}
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-200 pb-5">
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900">재고 관리</h2>
+                    <p className="text-sm text-slate-500 mt-1">
+                      부품별 창고 현재고와 안전재고 기준을 관리합니다. 이곳의 현재고 수량이 자재 발주 화면의 현재고 차감 계산에 실시간으로 반영됩니다.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('MATERIAL_ORDER')}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                    >
+                      자재 발주 화면으로 이동
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddInventoryPartForm((v) => !v)}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-amber-600 hover:bg-amber-500 text-white shadow-2xs transition-colors cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      신규 재고 부품 등록
+                    </button>
+                  </div>
+                </div>
+
+                {/* 4 Summary Cards */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setInventoryStatusFilter('ALL')}
+                    className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+                      inventoryStatusFilter === 'ALL'
+                        ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                        : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800'
+                    }`}
+                  >
+                    <div
+                      className={`text-xs font-medium ${
+                        inventoryStatusFilter === 'ALL' ? 'text-slate-300' : 'text-slate-500'
+                      }`}
+                    >
+                      전체 관리 부품
+                    </div>
+                    <div className="text-2xl font-bold mt-1">{inventoryStats.total}종</div>
+                    <div
+                      className={`text-xs mt-1 ${
+                        inventoryStatusFilter === 'ALL' ? 'text-slate-300' : 'text-slate-500'
+                      }`}
+                    >
+                      표준 BOM 연동 품목
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setInventoryStatusFilter('NORMAL')}
+                    className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+                      inventoryStatusFilter === 'NORMAL'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                        : 'bg-emerald-50/60 hover:bg-emerald-50 border-emerald-200 text-emerald-950'
+                    }`}
+                  >
+                    <div
+                      className={`text-xs font-medium ${
+                        inventoryStatusFilter === 'NORMAL' ? 'text-emerald-100' : 'text-emerald-700'
+                      }`}
+                    >
+                      정상 보유 (안전재고 이상)
+                    </div>
+                    <div className="text-2xl font-bold mt-1">{inventoryStats.normal}종</div>
+                    <div
+                      className={`text-xs mt-1 ${
+                        inventoryStatusFilter === 'NORMAL' ? 'text-emerald-100' : 'text-emerald-600'
+                      }`}
+                    >
+                      즉시 생산 투입 가능
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setInventoryStatusFilter('LOW')}
+                    className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+                      inventoryStatusFilter === 'LOW'
+                        ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
+                        : 'bg-amber-50/70 hover:bg-amber-50 border-amber-200 text-amber-950'
+                    }`}
+                  >
+                    <div
+                      className={`text-xs font-medium flex items-center gap-1 ${
+                        inventoryStatusFilter === 'LOW' ? 'text-amber-100' : 'text-amber-700'
+                      }`}
+                    >
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      재고 부족 (안전재고 미달)
+                    </div>
+                    <div className="text-2xl font-bold mt-1">{inventoryStats.low}종</div>
+                    <div
+                      className={`text-xs mt-1 ${
+                        inventoryStatusFilter === 'LOW' ? 'text-amber-100' : 'text-amber-700'
+                      }`}
+                    >
+                      보충 발주 권장
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setInventoryStatusFilter('EMPTY')}
+                    className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+                      inventoryStatusFilter === 'EMPTY'
+                        ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
+                        : 'bg-rose-50/70 hover:bg-rose-50 border-rose-200 text-rose-950'
+                    }`}
+                  >
+                    <div
+                      className={`text-xs font-medium ${
+                        inventoryStatusFilter === 'EMPTY' ? 'text-rose-100' : 'text-rose-700'
+                      }`}
+                    >
+                      품절 품목 (현재고 0)
+                    </div>
+                    <div className="text-2xl font-bold mt-1">{inventoryStats.empty}종</div>
+                    <div
+                      className={`text-xs mt-1 ${
+                        inventoryStatusFilter === 'EMPTY' ? 'text-rose-100' : 'text-rose-600'
+                      }`}
+                    >
+                      긴급 발주 필요
+                    </div>
+                  </button>
+                </div>
+
+                {/* Add New Inventory Part Form */}
+                {showAddInventoryPartForm && (
+                  <div className="p-5 rounded-2xl bg-amber-50/60 border border-amber-200 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-semibold text-amber-950 flex items-center gap-2">
+                        <Package className="w-4 h-4 text-amber-600" />
+                        창고 신규 재고 부품 등록
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={() => setShowAddInventoryPartForm(false)}
+                        className="text-slate-400 hover:text-slate-700 cursor-pointer"
+                      >
+                        <X className="w-5 h-5" />
                       </button>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleSendPoPdfEmail(po)}
-                      className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-extrabold bg-indigo-600 hover:bg-indigo-500 text-white shadow-xs transition-colors cursor-pointer"
-                    >
-                      <Send className="w-4 h-4" />
-                      업체({po.supplierName})로 PDF 발주서 파일 전송
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleReceivePoItems(po)}
-                      disabled={Boolean(poReceivedMap[po.poNumber])}
-                      className={`w-full inline-flex items-center justify-center gap-2 py-2 px-4 rounded-xl text-xs font-extrabold border transition-colors cursor-pointer ${
-                        poReceivedMap[po.poNumber]
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 cursor-default'
-                          : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-200'
-                      }`}
-                    >
-                      <PackageCheck className="w-4 h-4" />
-                      {poReceivedMap[po.poNumber]
-                        ? '자재 입고 완료됨 (창고 현재고에 +반영됨)'
-                        : `자재 입고 완료 처리 (창고 현재고 +${po.totalOrderQty}개 자동 반영)`}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* =====================================================================
-            TAB 4: 창고 재고 및 입출고 관리 (STEP 2 현재고와 100% 실시간 연동)
-        ===================================================================== */}
-        {activeTab === 'STEP4_INVENTORY' && (
-          <div className="space-y-6">
-            <section className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs space-y-6 p-6">
-              {/* Header */}
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-200 pb-5">
-                <div>
-                  <div className="flex items-center gap-2.5">
-                    <span className="px-3 py-1 rounded-lg text-sm font-extrabold bg-amber-600 text-white">
-                      STEP 4 · 재고 관리
-                    </span>
-                    <h2 className="text-xl font-extrabold text-slate-900">
-                      부품 창고 현재고 및 입·출고 통합 관리
-                    </h2>
-                  </div>
-                  <p className="text-sm text-slate-500 mt-1">
-                    이곳에서 관리하는 부품별 <strong>창고 현재고</strong> 숫자가{' '}
-                    <strong className="text-violet-700">STEP 2 (BOM 자동 전개)</strong>의 현재고 칸에 100% 실시간으로 연동되어 실제 발주수량을 계산합니다.
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('STEP2_BOM')}
-                    className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 transition-colors cursor-pointer"
-                  >
-                    ← STEP 2 (BOM 화면)에서 연동 확인
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowAddInventoryPartForm((v) => !v)}
-                    className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-extrabold bg-amber-600 hover:bg-amber-500 text-white shadow-xs transition-colors cursor-pointer"
-                  >
-                    <Plus className="w-4 h-4" />+ 신규 재고 부품 등록
-                  </button>
-                </div>
-              </div>
-
-              {/* 4 Summary Cards */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <button
-                  type="button"
-                  onClick={() => setInventoryStatusFilter('ALL')}
-                  className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
-                    inventoryStatusFilter === 'ALL'
-                      ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
-                      : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800'
-                  }`}
-                >
-                  <div
-                    className={`text-xs font-bold ${
-                      inventoryStatusFilter === 'ALL' ? 'text-slate-300' : 'text-slate-500'
-                    }`}
-                  >
-                    전체 관리 부품
-                  </div>
-                  <div className="text-2xl font-black mt-1">{inventoryStats.total}종</div>
-                  <div
-                    className={`text-xs mt-1 ${
-                      inventoryStatusFilter === 'ALL' ? 'text-slate-300' : 'text-slate-500'
-                    }`}
-                  >
-                    키오스크 표준 BOM 연동 품목
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setInventoryStatusFilter('NORMAL')}
-                  className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
-                    inventoryStatusFilter === 'NORMAL'
-                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                      : 'bg-emerald-50/60 hover:bg-emerald-50 border-emerald-200 text-emerald-950'
-                  }`}
-                >
-                  <div
-                    className={`text-xs font-bold ${
-                      inventoryStatusFilter === 'NORMAL' ? 'text-emerald-100' : 'text-emerald-700'
-                    }`}
-                  >
-                    정상 보유 품목 (안전재고 이상)
-                  </div>
-                  <div className="text-2xl font-black mt-1">{inventoryStats.normal}종</div>
-                  <div
-                    className={`text-xs mt-1 ${
-                      inventoryStatusFilter === 'NORMAL' ? 'text-emerald-100' : 'text-emerald-600'
-                    }`}
-                  >
-                    즉시 조립 투입 가능
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setInventoryStatusFilter('LOW')}
-                  className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
-                    inventoryStatusFilter === 'LOW'
-                      ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
-                      : 'bg-amber-50/70 hover:bg-amber-50 border-amber-200 text-amber-950'
-                  }`}
-                >
-                  <div
-                    className={`text-xs font-bold flex items-center gap-1 ${
-                      inventoryStatusFilter === 'LOW' ? 'text-amber-100' : 'text-amber-700'
-                    }`}
-                  >
-                    <AlertTriangle className="w-3.5 h-3.5" />
-                    재고 부족 (안전재고 미달)
-                  </div>
-                  <div className="text-2xl font-black mt-1">{inventoryStats.low}종</div>
-                  <div
-                    className={`text-xs mt-1 ${
-                      inventoryStatusFilter === 'LOW' ? 'text-amber-100' : 'text-amber-700'
-                    }`}
-                  >
-                    선제적 보충 발주 권장
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setInventoryStatusFilter('EMPTY')}
-                  className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
-                    inventoryStatusFilter === 'EMPTY'
-                      ? 'bg-rose-600 text-white border-rose-600 shadow-sm'
-                      : 'bg-rose-50/70 hover:bg-rose-50 border-rose-200 text-rose-950'
-                  }`}
-                >
-                  <div
-                    className={`text-xs font-bold ${
-                      inventoryStatusFilter === 'EMPTY' ? 'text-rose-100' : 'text-rose-700'
-                    }`}
-                  >
-                    품절 품목 (현재고 0)
-                  </div>
-                  <div className="text-2xl font-black mt-1">{inventoryStats.empty}종</div>
-                  <div
-                    className={`text-xs mt-1 ${
-                      inventoryStatusFilter === 'EMPTY' ? 'text-rose-100' : 'text-rose-600'
-                    }`}
-                  >
-                    긴급 매입 발주 필요
-                  </div>
-                </button>
-              </div>
-
-              {/* Add New Inventory Part Form */}
-              {showAddInventoryPartForm && (
-                <div className="p-5 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-base font-extrabold text-amber-950 flex items-center gap-2">
-                      <Package className="w-5 h-5 text-amber-600" />
-                      창고 신규 재고 부품 등록
-                    </h3>
-                    <button
-                      type="button"
-                      onClick={() => setShowAddInventoryPartForm(false)}
-                      className="text-slate-400 hover:text-slate-700 cursor-pointer"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-sm">
-                    <div>
-                      <label className="block text-slate-700 font-semibold mb-1">부품코드</label>
-                      <input
-                        type="text"
-                        placeholder="예: CBL-LAN-CAT6"
-                        value={newInventoryPart.partCode}
-                        onChange={(e) =>
-                          setNewInventoryPart({ ...newInventoryPart, partCode: e.target.value })
-                        }
-                        className="w-full px-3 py-2 rounded-xl bg-white border border-amber-300"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-700 font-semibold mb-1">카테고리</label>
-                      <select
-                        value={newInventoryPart.category}
-                        onChange={(e) =>
-                          setNewInventoryPart({
-                            ...newInventoryPart,
-                            category: e.target.value as PartCategory,
-                          })
-                        }
-                        className="w-full px-3 py-2 rounded-xl bg-white border border-amber-300 font-bold"
-                      >
-                        {PART_CATEGORIES.map((c) => (
-                          <option key={c} value={c}>
-                            {c}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label className="block text-slate-700 font-semibold mb-1">
-                        부품명 (필수)
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="예: CAT.6 기가비트 랜 케이블 (3M)"
-                        value={newInventoryPart.partName}
-                        onChange={(e) =>
-                          setNewInventoryPart({ ...newInventoryPart, partName: e.target.value })
-                        }
-                        className="w-full px-3 py-2 rounded-xl bg-white border border-amber-300 font-bold"
-                      />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label className="block text-slate-700 font-semibold mb-1">상세 규격</label>
-                      <input
-                        type="text"
-                        placeholder="예: STP 차폐, RJ45 커넥터"
-                        value={newInventoryPart.spec}
-                        onChange={(e) =>
-                          setNewInventoryPart({ ...newInventoryPart, spec: e.target.value })
-                        }
-                        className="w-full px-3 py-2 rounded-xl bg-white border border-amber-300"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-700 font-semibold mb-1">
-                        기초 현재고 / 안전재고
-                      </label>
-                      <div className="flex gap-1.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-sm">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">
+                          부품코드
+                        </label>
                         <input
-                          type="number"
-                          min={0}
-                          placeholder="현재고"
-                          value={newInventoryPart.stockQty}
+                          type="text"
+                          placeholder="예: TAP-ETC-002"
+                          value={newInventoryPart.partCode}
                           onChange={(e) =>
-                            setNewInventoryPart({
-                              ...newInventoryPart,
-                              stockQty: Number(e.target.value) || 0,
-                            })
+                            setNewInventoryPart({ ...newInventoryPart, partCode: e.target.value })
                           }
-                          className="w-1/2 px-3 py-2 rounded-xl bg-white border border-amber-300 font-bold"
-                        />
-                        <input
-                          type="number"
-                          min={0}
-                          placeholder="안전재고"
-                          value={newInventoryPart.safetyStockQty}
-                          onChange={(e) =>
-                            setNewInventoryPart({
-                              ...newInventoryPart,
-                              safetyStockQty: Number(e.target.value) || 0,
-                            })
-                          }
-                          className="w-1/2 px-3 py-2 rounded-xl bg-white border border-amber-300 font-bold"
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-amber-300"
                         />
                       </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">
+                          카테고리
+                        </label>
+                        <select
+                          value={newInventoryPart.category}
+                          onChange={(e) =>
+                            setNewInventoryPart({
+                              ...newInventoryPart,
+                              category: e.target.value as PartCategory,
+                            })
+                          }
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-amber-300 font-medium"
+                        >
+                          {PART_CATEGORIES.map((c) => (
+                            <option key={c} value={c}>
+                              {c}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-medium text-slate-700 mb-1">
+                          부품명 (필수)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="예: CAT.6 기가비트 랜 케이블 (3M)"
+                          value={newInventoryPart.partName}
+                          onChange={(e) =>
+                            setNewInventoryPart({ ...newInventoryPart, partName: e.target.value })
+                          }
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-amber-300"
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-medium text-slate-700 mb-1">
+                          상세 규격
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="예: STP 차폐, RJ45 커넥터"
+                          value={newInventoryPart.spec}
+                          onChange={(e) =>
+                            setNewInventoryPart({ ...newInventoryPart, spec: e.target.value })
+                          }
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-amber-300"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">
+                          기초 현재고 / 안전재고
+                        </label>
+                        <div className="flex gap-1.5">
+                          <input
+                            type="number"
+                            min={0}
+                            placeholder="현재고"
+                            value={newInventoryPart.stockQty}
+                            onChange={(e) =>
+                              setNewInventoryPart({
+                                ...newInventoryPart,
+                                stockQty: Number(e.target.value) || 0,
+                              })
+                            }
+                            className="w-1/2 px-3 py-2 rounded-xl bg-white border border-amber-300 font-medium"
+                          />
+                          <input
+                            type="number"
+                            min={0}
+                            placeholder="안전재고"
+                            value={newInventoryPart.safetyStockQty}
+                            onChange={(e) =>
+                              setNewInventoryPart({
+                                ...newInventoryPart,
+                                safetyStockQty: Number(e.target.value) || 0,
+                              })
+                            }
+                            className="w-1/2 px-3 py-2 rounded-xl bg-white border border-amber-300 font-medium"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">
+                          주 발주처
+                        </label>
+                        <select
+                          value={newInventoryPart.supplierId}
+                          onChange={(e) =>
+                            setNewInventoryPart({ ...newInventoryPart, supplierId: e.target.value })
+                          }
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-amber-300 font-medium"
+                        >
+                          {supplierPartners.map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-slate-700 font-semibold mb-1">주 발주처</label>
-                      <select
-                        value={newInventoryPart.supplierId}
-                        onChange={(e) =>
-                          setNewInventoryPart({ ...newInventoryPart, supplierId: e.target.value })
-                        }
-                        className="w-full px-3 py-2 rounded-xl bg-white border border-amber-300 font-bold"
+
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowAddInventoryPartForm(false)}
+                        className="px-4 py-1.5 rounded-xl text-xs font-medium bg-white border border-slate-300 cursor-pointer"
                       >
-                        {supplierPartners.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name}
-                          </option>
-                        ))}
-                      </select>
+                        취소
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleAddWarehousePart}
+                        className="px-4 py-1.5 rounded-xl text-xs font-semibold bg-amber-600 text-white cursor-pointer"
+                      >
+                        등록하기
+                      </button>
                     </div>
                   </div>
+                )}
 
-                  <div className="flex justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowAddInventoryPartForm(false)}
-                      className="px-4 py-2 rounded-xl text-sm font-semibold bg-white border border-slate-300 cursor-pointer"
-                    >
-                      취소
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleAddWarehousePart}
-                      className="px-5 py-2 rounded-xl text-sm font-bold bg-amber-600 text-white cursor-pointer"
-                    >
-                      창고 재고에 등록
-                    </button>
+                {/* Filter & Search Bar */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {CATEGORIES.map((cat) => (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setInventoryCategory(cat)}
+                        className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
+                          inventoryCategory === cat
+                            ? 'bg-amber-600 text-white'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200/80'
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="relative w-full md:w-72">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="부품코드, 부품명, 공급사 검색..."
+                      value={inventorySearch}
+                      onChange={(e) => setInventorySearch(e.target.value)}
+                      className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-300 text-sm focus:outline-none focus:border-amber-500 focus:bg-white"
+                    />
                   </div>
                 </div>
-              )}
 
-              {/* Filter & Search Bar */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                <div className="flex items-center gap-2 flex-wrap">
-                  {CATEGORIES.map((cat) => (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => setInventoryCategory(cat)}
-                      className={`px-3.5 py-2 rounded-xl text-sm font-bold transition-colors cursor-pointer ${
-                        inventoryCategory === cat
-                          ? 'bg-amber-600 text-white shadow-2xs'
-                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200/80'
-                      }`}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="relative w-full md:w-72">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    placeholder="부품코드, 부품명, 공급사 검색..."
-                    value={inventorySearch}
-                    onChange={(e) => setInventorySearch(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-300 text-sm focus:outline-none focus:border-amber-500 focus:bg-white"
-                  />
-                </div>
-              </div>
-
-              {/* Inventory Table */}
-              <div className="overflow-x-auto rounded-xl border border-slate-200">
-                <table className="w-full min-w-[1080px] text-left border-collapse text-sm">
-                  <thead>
-                    <tr className="bg-slate-100 text-slate-700 border-b border-slate-200 whitespace-nowrap">
-                      <th className="py-3.5 px-4 font-bold w-[150px]">부품코드 / 분류</th>
-                      <th className="py-3.5 px-4 font-bold min-w-[230px]">부품명 및 규격</th>
-                      <th className="py-3.5 px-4 text-center font-bold w-[110px]">재고 상태</th>
-                      <th className="py-3.5 px-4 text-center font-bold w-[220px]">
-                        창고 현재고 (실시간 입·출고 조정)
-                      </th>
-                      <th className="py-3.5 px-4 text-center font-bold w-[110px]">안전재고 기준</th>
-                      <th className="py-3.5 px-4 text-right font-bold w-[130px]">
-                        현재 수주 필요량
-                      </th>
-                      <th className="py-3.5 px-4 font-bold min-w-[190px]">주 매입 발주처</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {filteredWarehouseInventory.map((part) => (
-                      <tr key={part.partCode} className="hover:bg-slate-50/90 transition-colors">
-                        <td className="py-4 px-4 whitespace-nowrap align-middle">
-                          <div className="font-mono font-bold text-indigo-600 text-sm">
-                            {part.partCode}
-                          </div>
-                          <span className="inline-block mt-1 px-2.5 py-0.5 rounded-md text-xs font-semibold bg-slate-100 text-slate-700 whitespace-nowrap">
-                            {part.category}
-                          </span>
-                        </td>
-
-                        <td className="py-4 px-4 align-middle break-keep">
-                          <div className="font-bold text-slate-900 text-base">{part.partName}</div>
-                          <div className="text-xs text-slate-500 mt-0.5">{part.spec}</div>
-                          <div className="flex flex-wrap gap-1 mt-1.5">
-                            {part.usedInModels.map((mc) => (
-                              <span
-                                key={mc}
-                                className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-mono text-[11px] font-semibold whitespace-nowrap"
-                              >
-                                {mc}
-                              </span>
-                            ))}
-                          </div>
-                        </td>
-
-                        <td className="py-4 px-4 text-center whitespace-nowrap align-middle">
-                          {part.stockStatus === 'EMPTY' ? (
-                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-extrabold bg-rose-100 text-rose-700 border border-rose-200">
-                              품절 (0)
-                            </span>
-                          ) : part.stockStatus === 'LOW' ? (
-                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-extrabold bg-amber-100 text-amber-800 border border-amber-200">
-                              재고 부족
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                              정상 보유
-                            </span>
-                          )}
-                        </td>
-
-                        <td className="py-4 px-4 whitespace-nowrap align-middle">
-                          <div className="flex items-center justify-center gap-1.5">
-                            <button
-                              type="button"
-                              title="1개 출고(-1)"
-                              onClick={() =>
-                                handleAdjustWarehouseStock(
-                                  part.partCode,
-                                  part.stockQty - 1,
-                                  '창고 재고 관리에서 -1 출고 차감',
-                                  'OUT'
-                                )
-                              }
-                              className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-rose-100 hover:text-rose-700 text-slate-700 font-extrabold border border-slate-300 transition-colors cursor-pointer"
-                            >
-                              -1
-                            </button>
-                            <input
-                              type="number"
-                              min={0}
-                              value={part.stockQty}
-                              onChange={(e) =>
-                                handleAdjustWarehouseStock(
-                                  part.partCode,
-                                  Math.max(0, Number(e.target.value) || 0),
-                                  '창고 재고 수량 직접 수정',
-                                  'ADJUST'
-                                )
-                              }
-                              className="w-20 text-center py-1.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-950 font-black text-base focus:outline-none focus:border-emerald-600"
-                            />
-                            <span className="text-xs font-bold text-slate-500">{part.unit}</span>
-                            <button
-                              type="button"
-                              title="1개 입고(+1)"
-                              onClick={() =>
-                                handleAdjustWarehouseStock(
-                                  part.partCode,
-                                  part.stockQty + 1,
-                                  '창고 재고 관리에서 +1 입고 추가',
-                                  'IN'
-                                )
-                              }
-                              className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-emerald-100 hover:text-emerald-700 text-slate-700 font-extrabold border border-slate-300 transition-colors cursor-pointer"
-                            >
-                              +1
-                            </button>
-                            <button
-                              type="button"
-                              title="5개 입고(+5)"
-                              onClick={() =>
-                                handleAdjustWarehouseStock(
-                                  part.partCode,
-                                  part.stockQty + 5,
-                                  '창고 재고 관리에서 +5 입고 추가',
-                                  'IN'
-                                )
-                              }
-                              className="px-2 h-8 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-extrabold border border-emerald-200 text-xs transition-colors cursor-pointer"
-                            >
-                              +5
-                            </button>
-                          </div>
-                        </td>
-
-                        <td className="py-4 px-4 text-center whitespace-nowrap align-middle">
-                          <div className="inline-flex items-center gap-1">
-                            <input
-                              type="number"
-                              min={0}
-                              value={part.safetyStockQty}
-                              onChange={(e) =>
-                                setSafetyStockMap((prev) => ({
-                                  ...prev,
-                                  [part.partCode]: Math.max(0, Number(e.target.value) || 0),
-                                }))
-                              }
-                              className="w-16 text-center py-1 rounded-lg bg-white border border-slate-300 text-slate-700 font-bold text-sm"
-                            />
-                            <span className="text-xs text-slate-500">{part.unit}</span>
-                          </div>
-                        </td>
-
-                        <td className="py-4 px-4 text-right font-mono whitespace-nowrap align-middle">
-                          {part.currentReqQty > 0 ? (
-                            <div>
-                              <span className="font-extrabold text-violet-700 text-base">
-                                {part.currentReqQty.toLocaleString()} {part.unit}
-                              </span>
-                              <div className="text-xs text-slate-500">
-                                {part.stockQty >= part.currentReqQty ? (
-                                  <span className="text-emerald-600 font-semibold">
-                                    재고 충분 (잔여 {part.stockQty - part.currentReqQty})
-                                  </span>
-                                ) : (
-                                  <span className="text-rose-600 font-semibold">
-                                    발주 필요 ({part.currentReqQty - part.stockQty} 부족)
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          ) : (
-                            <span className="text-xs text-slate-400">현재 수주 해당없음</span>
-                          )}
-                        </td>
-
-                        <td className="py-4 px-4 whitespace-nowrap align-middle">
-                          <div className="font-bold text-slate-900">{part.supplierName}</div>
-                          <div className="text-xs text-slate-500 mt-0.5">
-                            {part.supplierManager} ({part.supplierPhone})
-                          </div>
-                        </td>
+                {/* Inventory Table */}
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <table className="w-full min-w-[1040px] text-left border-collapse text-sm">
+                    <thead>
+                      <tr className="bg-slate-100/80 text-slate-600 border-b border-slate-200 whitespace-nowrap">
+                        <th className="py-3 px-4 font-medium w-[145px]">부품코드 / 분류</th>
+                        <th className="py-3 px-4 font-medium min-w-[230px]">부품명 및 규격</th>
+                        <th className="py-3 px-4 text-center font-medium w-[110px]">재고 상태</th>
+                        <th className="py-3 px-4 text-center font-medium w-[210px]">
+                          창고 현재고 (입·출고 조정)
+                        </th>
+                        <th className="py-3 px-4 text-center font-medium w-[110px]">안전재고 기준</th>
+                        <th className="py-3 px-4 text-right font-medium w-[130px]">
+                          현재 수주 필요량
+                        </th>
+                        <th className="py-3 px-4 font-medium min-w-[180px]">주 매입 발주처</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {filteredWarehouseInventory.map((part) => (
+                        <tr key={part.partCode} className="hover:bg-slate-50/90 transition-colors">
+                          <td className="py-3.5 px-4 whitespace-nowrap align-middle">
+                            <div className="font-mono font-medium text-indigo-600 text-xs sm:text-sm">
+                              {part.partCode}
+                            </div>
+                            <span className="inline-block mt-1 px-2 py-0.5 rounded text-xs font-normal bg-slate-100 text-slate-600 whitespace-nowrap">
+                              {part.category}
+                            </span>
+                          </td>
 
-            {/* Recent Inventory In/Out History Log */}
-            <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-                <div className="flex items-center gap-2">
-                  <History className="w-5 h-5 text-amber-600" />
-                  <h3 className="text-lg font-extrabold text-slate-900">
-                    최근 창고 입·출고 및 재고 조정 이력
-                  </h3>
+                          <td className="py-3.5 px-4 align-middle break-keep">
+                            <div className="font-medium text-slate-900 text-sm sm:text-base">
+                              {part.partName}
+                            </div>
+                            <div className="text-xs text-slate-500 mt-0.5">{part.spec}</div>
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              {part.usedInModels.map((mc) => (
+                                <span
+                                  key={mc}
+                                  className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-mono text-[11px] whitespace-nowrap"
+                                >
+                                  {mc}
+                                </span>
+                              ))}
+                            </div>
+                          </td>
+
+                          <td className="py-3.5 px-4 text-center whitespace-nowrap align-middle">
+                            {part.stockStatus === 'EMPTY' ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200">
+                                품절 (0)
+                              </span>
+                            ) : part.stockStatus === 'LOW' ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200">
+                                재고 부족
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                정상 보유
+                              </span>
+                            )}
+                          </td>
+
+                          <td className="py-3.5 px-4 whitespace-nowrap align-middle">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                title="1개 출고(-1)"
+                                onClick={() =>
+                                  handleAdjustWarehouseStock(
+                                    part.partCode,
+                                    part.stockQty - 1,
+                                    '재고 관리에서 -1 출고 차감',
+                                    'OUT'
+                                  )
+                                }
+                                className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-700 font-medium border border-slate-300 transition-colors cursor-pointer"
+                              >
+                                -1
+                              </button>
+                              <input
+                                type="number"
+                                min={0}
+                                value={part.stockQty}
+                                onChange={(e) =>
+                                  handleAdjustWarehouseStock(
+                                    part.partCode,
+                                    Math.max(0, Number(e.target.value) || 0),
+                                    '창고 재고 수량 직접 수정',
+                                    'ADJUST'
+                                  )
+                                }
+                                className="w-18 text-center py-1.5 rounded-xl bg-emerald-50/70 border border-emerald-300 text-emerald-950 font-semibold text-base focus:outline-none focus:border-emerald-600"
+                              />
+                              <span className="text-xs text-slate-500">{part.unit}</span>
+                              <button
+                                type="button"
+                                title="1개 입고(+1)"
+                                onClick={() =>
+                                  handleAdjustWarehouseStock(
+                                    part.partCode,
+                                    part.stockQty + 1,
+                                    '재고 관리에서 +1 입고 추가',
+                                    'IN'
+                                  )
+                                }
+                                className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 font-medium border border-slate-300 transition-colors cursor-pointer"
+                              >
+                                +1
+                              </button>
+                              <button
+                                type="button"
+                                title="5개 입고(+5)"
+                                onClick={() =>
+                                  handleAdjustWarehouseStock(
+                                    part.partCode,
+                                    part.stockQty + 5,
+                                    '재고 관리에서 +5 입고 추가',
+                                    'IN'
+                                  )
+                                }
+                                className="px-2 h-8 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-medium border border-emerald-200 text-xs transition-colors cursor-pointer"
+                              >
+                                +5
+                              </button>
+                            </div>
+                          </td>
+
+                          <td className="py-3.5 px-4 text-center whitespace-nowrap align-middle">
+                            <div className="inline-flex items-center gap-1">
+                              <input
+                                type="number"
+                                min={0}
+                                value={part.safetyStockQty}
+                                onChange={(e) =>
+                                  setSafetyStockMap((prev) => ({
+                                    ...prev,
+                                    [part.partCode]: Math.max(0, Number(e.target.value) || 0),
+                                  }))
+                                }
+                                className="w-14 text-center py-1 rounded-lg bg-white border border-slate-300 text-slate-700 font-medium text-sm"
+                              />
+                              <span className="text-xs text-slate-500">{part.unit}</span>
+                            </div>
+                          </td>
+
+                          <td className="py-3.5 px-4 text-right font-mono whitespace-nowrap align-middle">
+                            {part.currentReqQty > 0 ? (
+                              <div>
+                                <span className="font-semibold text-indigo-700 text-sm sm:text-base">
+                                  {part.currentReqQty.toLocaleString()} {part.unit}
+                                </span>
+                                <div className="text-xs text-slate-500">
+                                  {part.stockQty >= part.currentReqQty ? (
+                                    <span className="text-emerald-600">
+                                      재고 충분 (잔여 {part.stockQty - part.currentReqQty})
+                                    </span>
+                                  ) : (
+                                    <span className="text-rose-600 font-medium">
+                                      발주 필요 ({part.currentReqQty - part.stockQty} 부족)
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-slate-400">해당없음</span>
+                            )}
+                          </td>
+
+                          <td className="py-3.5 px-4 whitespace-nowrap align-middle">
+                            <div className="font-medium text-slate-900">{part.supplierName}</div>
+                            <div className="text-xs text-slate-500 mt-0.5">
+                              {part.supplierManager} ({part.supplierPhone})
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-                <span className="text-xs font-semibold text-slate-500">
-                  재고 수량 변경 및 STEP 3 발주서 입고 완료 내역이 자동 기록됩니다
-                </span>
-              </div>
+              </section>
 
-              <div className="overflow-x-auto rounded-xl border border-slate-200">
-                <table className="w-full min-w-[780px] text-left border-collapse text-sm">
-                  <thead>
-                    <tr className="bg-slate-50 text-slate-600 border-b border-slate-200 whitespace-nowrap text-xs">
-                      <th className="py-2.5 px-4 font-bold">일시</th>
-                      <th className="py-2.5 px-4 font-bold">구분</th>
-                      <th className="py-2.5 px-4 font-bold">부품코드 / 부품명</th>
-                      <th className="py-2.5 px-4 text-right font-bold">변동 수량</th>
-                      <th className="py-2.5 px-4 text-right font-bold">변경 후 현재고</th>
-                      <th className="py-2.5 px-4 font-bold">비고 (사유)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {inventoryLogs.map((log) => (
-                      <tr key={log.id} className="hover:bg-slate-50">
-                        <td className="py-3 px-4 font-mono text-xs text-slate-500 whitespace-nowrap">
-                          {log.timestamp}
-                        </td>
-                        <td className="py-3 px-4 whitespace-nowrap">
-                          <span
-                            className={`px-2.5 py-0.5 rounded-md text-xs font-extrabold ${
-                              log.type === 'IN'
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                : log.type === 'OUT'
-                                  ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                                  : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+              {/* Recent Inventory In/Out History Log */}
+              <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+                  <div className="flex items-center gap-2">
+                    <History className="w-5 h-5 text-amber-600" />
+                    <h3 className="text-base font-semibold text-slate-900">
+                      최근 입·출고 및 재고 조정 이력
+                    </h3>
+                  </div>
+                  <span className="text-xs text-slate-500">
+                    재고 수량 변경 및 발주서 입고 내역이 자동 기록됩니다
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <table className="w-full min-w-[760px] text-left border-collapse text-sm">
+                    <thead>
+                      <tr className="bg-slate-50 text-slate-600 border-b border-slate-200 whitespace-nowrap text-xs">
+                        <th className="py-2.5 px-4 font-medium">일시</th>
+                        <th className="py-2.5 px-4 font-medium">구분</th>
+                        <th className="py-2.5 px-4 font-medium">부품코드 / 부품명</th>
+                        <th className="py-2.5 px-4 text-right font-medium">변동 수량</th>
+                        <th className="py-2.5 px-4 text-right font-medium">변경 후 현재고</th>
+                        <th className="py-2.5 px-4 font-medium">비고 (사유)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {inventoryLogs.map((log) => (
+                        <tr key={log.id} className="hover:bg-slate-50">
+                          <td className="py-3 px-4 font-mono text-xs text-slate-500 whitespace-nowrap">
+                            {log.timestamp}
+                          </td>
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <span
+                              className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                log.type === 'IN'
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  : log.type === 'OUT'
+                                    ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                    : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                              }`}
+                            >
+                              {log.type === 'IN' ? '입고(+)' : log.type === 'OUT' ? '출고(-)' : '수량조정'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <span className="font-mono text-xs font-medium text-indigo-600 mr-2">
+                              {log.partCode}
+                            </span>
+                            <span className="font-medium text-slate-900">{log.partName}</span>
+                          </td>
+                          <td
+                            className={`py-3 px-4 text-right font-mono font-semibold whitespace-nowrap ${
+                              log.changeQty > 0 ? 'text-emerald-600' : 'text-rose-600'
                             }`}
                           >
-                            {log.type === 'IN' ? '입고(+)' : log.type === 'OUT' ? '출고(-)' : '수량조정'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 whitespace-nowrap">
-                          <span className="font-mono text-xs font-bold text-indigo-600 mr-2">
-                            {log.partCode}
-                          </span>
-                          <strong className="text-slate-900">{log.partName}</strong>
-                        </td>
-                        <td
-                          className={`py-3 px-4 text-right font-mono font-extrabold whitespace-nowrap ${
-                            log.changeQty > 0 ? 'text-emerald-600' : 'text-rose-600'
-                          }`}
-                        >
-                          {log.changeQty > 0 ? `+${log.changeQty}` : log.changeQty} {log.unit}
-                        </td>
-                        <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
-                          {log.afterStockQty} {log.unit}
-                        </td>
-                        <td className="py-3 px-4 text-slate-600 text-xs">{log.note}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          </div>
-        )}
+                            {log.changeQty > 0 ? `+${log.changeQty}` : log.changeQty} {log.unit}
+                          </td>
+                          <td className="py-3 px-4 text-right font-mono font-medium text-slate-900 whitespace-nowrap">
+                            {log.afterStockQty} {log.unit}
+                          </td>
+                          <td className="py-3 px-4 text-slate-600 text-xs">{log.note}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </div>
+          )}
 
-        {/* =====================================================================
-            TAB 4: 거래처(고객사·발주처) 및 표준 BOM 마스터 관리 (추가/수정/삭제)
-        ===================================================================== */}
-        {activeTab === 'STEP4_MASTER' && (
-          <div className="space-y-8">
-            {/* 1. Partner Companies Management (CRUD) */}
-            <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
+          {/* =====================================================================
+              4. 거래처 관리 (MANAGE_PARTNERS: 고객사 및 부품 매입 발주처 관리)
+          ===================================================================== */}
+          {activeTab === 'MANAGE_PARTNERS' && (
+            <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs space-y-5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
                 <div>
-                  <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
-                    <Building2 className="w-6 h-6 text-indigo-600" />
-                    거래처 (고객사 및 매입 발주처) 통합 관리
-                  </h2>
+                  <h2 className="text-xl font-bold text-slate-900">거래처 관리</h2>
                   <p className="text-sm text-slate-500 mt-1">
-                    수주 고객사 및 부품 매입 발주처 정보를 자유롭게 추가·수정·삭제할 수 있습니다.
+                    수주 고객사 및 부품 매입 발주처(공급업체) 정보를 추가·수정·삭제할 수 있습니다.
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   {(['ALL', 'CLIENT', 'SUPPLIER'] as const).map((type) => (
                     <button
                       key={type}
                       type="button"
                       onClick={() => setPartnerFilter(type)}
-                      className={`px-3.5 py-2 rounded-xl text-sm font-bold cursor-pointer ${
+                      className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium cursor-pointer ${
                         partnerFilter === type
                           ? 'bg-slate-900 text-white'
                           : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                       }`}
                     >
                       {type === 'ALL'
-                        ? '전체 거래처'
+                        ? `전체 (${partners.length})`
                         : type === 'CLIENT'
-                          ? '수주 고객사'
-                          : '매입 발주처'}
+                          ? `수주 고객사 (${clientPartners.length})`
+                          : `매입 발주처 (${supplierPartners.length})`}
                     </button>
                   ))}
                   <button
                     type="button"
                     onClick={() => setShowNewPartnerForm((v) => !v)}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer"
                   >
-                    <Plus className="w-4 h-4" />+ 거래처 추가
+                    <Plus className="w-4 h-4" />
+                    거래처 추가
                   </button>
                 </div>
               </div>
 
               {showNewPartnerForm && (
-                <div className="p-5 rounded-2xl bg-indigo-50/70 border border-indigo-200 space-y-4">
-                  <div className="text-base font-extrabold text-indigo-950">
-                    신규 거래처 등록
-                  </div>
+                <div className="p-5 rounded-2xl bg-indigo-50/60 border border-indigo-200 space-y-4">
+                  <div className="text-sm font-semibold text-indigo-950">신규 거래처 등록</div>
                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-sm">
                     <select
                       value={newPartner.type}
@@ -3331,7 +3351,7 @@ function App() {
                           type: e.target.value as 'CLIENT' | 'SUPPLIER',
                         })
                       }
-                      className="px-3 py-2.5 rounded-xl bg-white border border-indigo-200 font-bold"
+                      className="px-3 py-2 rounded-xl bg-white border border-indigo-200 font-medium"
                     >
                       <option value="SUPPLIER">매입 발주처 (부품 공급사)</option>
                       <option value="CLIENT">수주 고객사 (발주처)</option>
@@ -3341,56 +3361,56 @@ function App() {
                       placeholder="업체명 (필수)"
                       value={newPartner.name}
                       onChange={(e) => setNewPartner({ ...newPartner, name: e.target.value })}
-                      className="px-3 py-2.5 rounded-xl bg-white border border-indigo-200 font-bold"
+                      className="px-3 py-2 rounded-xl bg-white border border-indigo-200"
                     />
                     <input
                       type="text"
                       placeholder="사업자등록번호"
                       value={newPartner.bizNo}
                       onChange={(e) => setNewPartner({ ...newPartner, bizNo: e.target.value })}
-                      className="px-3 py-2.5 rounded-xl bg-white border border-indigo-200"
+                      className="px-3 py-2 rounded-xl bg-white border border-indigo-200"
                     />
                     <input
                       type="text"
                       placeholder="담당자명 / 직책"
                       value={newPartner.manager}
                       onChange={(e) => setNewPartner({ ...newPartner, manager: e.target.value })}
-                      className="px-3 py-2.5 rounded-xl bg-white border border-indigo-200"
+                      className="px-3 py-2 rounded-xl bg-white border border-indigo-200"
                     />
                     <input
                       type="text"
                       placeholder="연락처"
                       value={newPartner.phone}
                       onChange={(e) => setNewPartner({ ...newPartner, phone: e.target.value })}
-                      className="px-3 py-2.5 rounded-xl bg-white border border-indigo-200"
+                      className="px-3 py-2 rounded-xl bg-white border border-indigo-200"
                     />
                     <input
                       type="email"
                       placeholder="이메일"
                       value={newPartner.email}
                       onChange={(e) => setNewPartner({ ...newPartner, email: e.target.value })}
-                      className="px-3 py-2.5 rounded-xl bg-white border border-indigo-200"
+                      className="px-3 py-2 rounded-xl bg-white border border-indigo-200"
                     />
                     <input
                       type="text"
                       placeholder="주소"
                       value={newPartner.address}
                       onChange={(e) => setNewPartner({ ...newPartner, address: e.target.value })}
-                      className="sm:col-span-2 px-3 py-2.5 rounded-xl bg-white border border-indigo-200"
+                      className="sm:col-span-2 px-3 py-2 rounded-xl bg-white border border-indigo-200"
                     />
                   </div>
                   <div className="flex justify-end gap-2">
                     <button
                       type="button"
                       onClick={() => setShowNewPartnerForm(false)}
-                      className="px-4 py-2 rounded-xl text-sm font-semibold bg-white border border-slate-300 cursor-pointer"
+                      className="px-4 py-1.5 rounded-xl text-xs font-medium bg-white border border-slate-300 cursor-pointer"
                     >
                       취소
                     </button>
                     <button
                       type="button"
                       onClick={handleCreatePartner}
-                      className="px-5 py-2 rounded-xl text-sm font-bold bg-indigo-600 text-white cursor-pointer"
+                      className="px-4 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 text-white cursor-pointer"
                     >
                       등록 완료
                     </button>
@@ -3401,14 +3421,14 @@ function App() {
               <div className="overflow-x-auto rounded-xl border border-slate-200">
                 <table className="w-full min-w-[960px] text-left border-collapse text-sm">
                   <thead>
-                    <tr className="bg-slate-100 text-slate-700 border-b border-slate-200 whitespace-nowrap">
-                      <th className="py-3 px-4 font-bold">구분</th>
-                      <th className="py-3 px-4 font-bold">업체명</th>
-                      <th className="py-3 px-4 font-bold">사업자번호</th>
-                      <th className="py-3 px-4 font-bold">담당자 / 연락처</th>
-                      <th className="py-3 px-4 font-bold">이메일</th>
-                      <th className="py-3 px-4 font-bold">소재지 주소</th>
-                      <th className="py-3 px-3 text-center font-bold w-24">수정·삭제</th>
+                    <tr className="bg-slate-100/80 text-slate-600 border-b border-slate-200 whitespace-nowrap">
+                      <th className="py-3 px-4 font-medium">구분</th>
+                      <th className="py-3 px-4 font-medium">업체명</th>
+                      <th className="py-3 px-4 font-medium">사업자번호</th>
+                      <th className="py-3 px-4 font-medium">담당자 / 연락처</th>
+                      <th className="py-3 px-4 font-medium">이메일</th>
+                      <th className="py-3 px-4 font-medium">소재지 주소</th>
+                      <th className="py-3 px-3 text-center font-medium w-24">관리</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
@@ -3420,7 +3440,7 @@ function App() {
                           <tr key={partner.id} className="hover:bg-slate-50">
                             <td className="py-3.5 px-4 whitespace-nowrap">
                               <span
-                                className={`px-2.5 py-1 rounded-md text-xs font-bold whitespace-nowrap ${
+                                className={`px-2.5 py-0.5 rounded text-xs font-medium whitespace-nowrap ${
                                   partner.type === 'CLIENT'
                                     ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
                                     : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
@@ -3429,7 +3449,7 @@ function App() {
                                 {partner.type === 'CLIENT' ? '수주 고객사' : '매입 발주처'}
                               </span>
                             </td>
-                            <td className="py-3.5 px-4 font-bold text-slate-900 whitespace-nowrap">
+                            <td className="py-3.5 px-4 font-medium text-slate-900 whitespace-nowrap">
                               {isEdit ? (
                                 <input
                                   type="text"
@@ -3479,7 +3499,8 @@ function App() {
                                 </div>
                               ) : (
                                 <span>
-                                  <strong>{partner.manager}</strong> ({partner.phone})
+                                  <span className="font-medium text-slate-900">{partner.manager}</span>{' '}
+                                  <span className="text-slate-500">({partner.phone})</span>
                                 </span>
                               )}
                             </td>
@@ -3548,25 +3569,24 @@ function App() {
                 </table>
               </div>
             </section>
+          )}
 
-            {/* 2. Kiosk Product (Model) & 10+ BOM Master Management (Full CRUD & Sync) */}
-            <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-6">
+          {/* =====================================================================
+              5. 제품 · BOM 관리 (MANAGE_BOM: 키오스크 모델 및 대당 BOM 구성 관리)
+          ===================================================================== */}
+          {activeTab === 'MANAGE_BOM' && (
+            <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs space-y-6">
               {/* Top Header */}
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-200 pb-4">
                 <div>
                   <div className="flex items-center gap-2.5">
-                    <Layers className="w-6 h-6 text-violet-600" />
-                    <h2 className="text-xl font-extrabold text-slate-900">
-                      키오스크 제품(모델) 및 모델별 표준 BOM 통합 마스터 관리
-                    </h2>
-                    <span className="px-3 py-0.5 rounded-full text-xs font-extrabold bg-violet-100 text-violet-800 border border-violet-200">
-                      등록 제품 {kioskModels.length}종
+                    <h2 className="text-xl font-bold text-slate-900">제품 · BOM 관리</h2>
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-violet-50 text-violet-700 border border-violet-200">
+                      등록 키오스크 {kioskModels.length}종
                     </span>
                   </div>
                   <p className="text-sm text-slate-500 mt-1">
-                    <strong>신제품 추가(10종 이상 무제한)</strong>, <strong>제품명·규격 수정</strong>,{' '}
-                    <strong>판매중·신제품·일시품절 상태 변경</strong> 및 각 모델에 들어가는{' '}
-                    <strong>10개 이상의 BOM 부품과 1대당 소요량</strong>을 관리합니다. (변경 시 전 단계에 즉시 반영)
+                    무인민원발급기 및 키오스크 제품(신제품 등록·품절 전환·규격 수정)과 각 모델 1대당 소요되는 BOM 부품 구성을 관리합니다.
                   </p>
                 </div>
 
@@ -3574,26 +3594,27 @@ function App() {
                   <button
                     type="button"
                     onClick={() => setShowAddModelForm((v) => !v)}
-                    className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-extrabold bg-indigo-600 hover:bg-indigo-500 text-white shadow-xs transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-2xs transition-colors cursor-pointer"
                   >
-                    <Plus className="w-4 h-4" />+ 신제품(키오스크 모델) 추가
+                    <Plus className="w-4 h-4" />
+                    신제품(키오스크 모델) 추가
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowAddMasterBomForm((v) => !v)}
-                    className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-extrabold bg-violet-600 hover:bg-violet-500 text-white shadow-xs transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-violet-600 hover:bg-violet-500 text-white shadow-2xs transition-colors cursor-pointer"
                   >
-                    <Plus className="w-4 h-4" />+ [{selectedMasterModelCode}]에 신규 BOM 부품 추가
+                    <Plus className="w-4 h-4" />[{selectedMasterModelCode}]에 신규 부품 추가
                   </button>
                 </div>
               </div>
 
               {/* Add New Kiosk Product Form */}
               {showAddModelForm && (
-                <div className="p-5 rounded-2xl bg-indigo-50/80 border border-indigo-200 space-y-4">
+                <div className="p-5 rounded-2xl bg-indigo-50/60 border border-indigo-200 space-y-4">
                   <div className="flex items-center justify-between">
-                    <div className="text-base font-extrabold text-indigo-950 flex items-center gap-2">
-                      <Cpu className="w-5 h-5 text-indigo-600" />
+                    <div className="text-sm font-semibold text-indigo-950 flex items-center gap-2">
+                      <Cpu className="w-4 h-4 text-indigo-600" />
                       신제품 (신규 키오스크 모델) 등록
                     </div>
                     <button
@@ -3607,35 +3628,37 @@ function App() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-sm">
                     <div>
-                      <label className="block text-slate-700 font-semibold mb-1">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
                         모델코드 (미입력시 자동)
                       </label>
                       <input
                         type="text"
-                        placeholder="예: KSK-3800A"
+                        placeholder="예: TAPI-9400J"
                         value={newModelForm.modelCode}
                         onChange={(e) =>
                           setNewModelForm({ ...newModelForm, modelCode: e.target.value })
                         }
-                        className="w-full px-3 py-2.5 rounded-xl bg-white border border-indigo-200 font-mono font-bold"
+                        className="w-full px-3 py-2 rounded-xl bg-white border border-indigo-200 font-mono font-medium"
                       />
                     </div>
                     <div className="sm:col-span-2">
-                      <label className="block text-slate-700 font-semibold mb-1">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
                         키오스크 제품명 (필수)
                       </label>
                       <input
                         type="text"
-                        placeholder="예: AI 비전 무인 계산대 키오스크 38인치 (고급형)"
+                        placeholder="예: 차세대 무인민원발급기 TAPI-9400J"
                         value={newModelForm.modelName}
                         onChange={(e) =>
                           setNewModelForm({ ...newModelForm, modelName: e.target.value })
                         }
-                        className="w-full px-3 py-2.5 rounded-xl bg-white border border-indigo-200 font-bold"
+                        className="w-full px-3 py-2 rounded-xl bg-white border border-indigo-200"
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-700 font-semibold mb-1">초기 판매 상태</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
+                        초기 판매 상태
+                      </label>
                       <select
                         value={newModelForm.status}
                         onChange={(e) =>
@@ -3644,7 +3667,7 @@ function App() {
                             status: e.target.value as KioskProductStatus,
                           })
                         }
-                        className="w-full px-3 py-2.5 rounded-xl bg-white border border-indigo-200 font-bold"
+                        className="w-full px-3 py-2 rounded-xl bg-white border border-indigo-200 font-medium"
                       >
                         <option value="NEW">신제품 (NEW)</option>
                         <option value="ACTIVE">정상 판매중 (ACTIVE)</option>
@@ -3652,29 +3675,29 @@ function App() {
                       </select>
                     </div>
                     <div className="sm:col-span-2">
-                      <label className="block text-slate-700 font-semibold mb-1">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
                         제품 상세 규격 및 특징
                       </label>
                       <input
                         type="text"
-                        placeholder="예: 38인치 고휘도 터치 / 듀얼 카메라 / 고속 카드·QR·영수증 올인원"
+                        placeholder="예: 32인치 정전식 터치 / 점자·음성 장애인겸용 / 제증명·등기부 통합"
                         value={newModelForm.spec}
                         onChange={(e) => setNewModelForm({ ...newModelForm, spec: e.target.value })}
-                        className="w-full px-3 py-2.5 rounded-xl bg-white border border-indigo-200"
+                        className="w-full px-3 py-2 rounded-xl bg-white border border-indigo-200"
                       />
                     </div>
                     <div className="sm:col-span-2">
-                      <label className="block text-slate-700 font-semibold mb-1">
-                        기초 BOM 구성 복사해오기 (선택 모델의 10+개 BOM을 그대로 가져와 편집)
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
+                        기초 BOM 구성 복사해오기
                       </label>
                       <select
                         value={newModelForm.copyFromModelCode}
                         onChange={(e) =>
                           setNewModelForm({ ...newModelForm, copyFromModelCode: e.target.value })
                         }
-                        className="w-full px-3 py-2.5 rounded-xl bg-white border border-indigo-200 font-semibold"
+                        className="w-full px-3 py-2 rounded-xl bg-white border border-indigo-200 font-medium"
                       >
-                        <option value="">빈 BOM으로 시작 (직접 0개부터 부품 추가)</option>
+                        <option value="">빈 BOM으로 시작 (직접 부품 추가)</option>
                         {kioskModels.map((m) => (
                           <option key={m.modelCode} value={m.modelCode}>
                             [{m.modelCode}] {m.modelName} (BOM {m.bom.length}종 복사)
@@ -3688,14 +3711,14 @@ function App() {
                     <button
                       type="button"
                       onClick={() => setShowAddModelForm(false)}
-                      className="px-4 py-2 rounded-xl text-sm font-semibold bg-white border border-slate-300 cursor-pointer"
+                      className="px-4 py-1.5 rounded-xl text-xs font-medium bg-white border border-slate-300 cursor-pointer"
                     >
                       취소
                     </button>
                     <button
                       type="button"
                       onClick={handleCreateKioskModel}
-                      className="px-5 py-2 rounded-xl text-sm font-extrabold bg-indigo-600 text-white cursor-pointer"
+                      className="px-4 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 text-white cursor-pointer"
                     >
                       신제품 등록 완료
                     </button>
@@ -3705,7 +3728,7 @@ function App() {
 
               {/* Kiosk Models Filter & Search Bar */}
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   {(
                     [
                       { key: 'ALL', label: `전체 제품 (${kioskModels.length})` },
@@ -3727,10 +3750,10 @@ function App() {
                       key={tab.key}
                       type="button"
                       onClick={() => setModelStatusFilter(tab.key)}
-                      className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-colors cursor-pointer ${
+                      className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
                         modelStatusFilter === tab.key
                           ? 'bg-slate-900 text-white'
-                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                       }`}
                     >
                       {tab.label}
@@ -3750,7 +3773,7 @@ function App() {
                 </div>
               </div>
 
-              {/* Kiosk Models Grid Selector (Clean 3-4 cols for 10+ models) */}
+              {/* Kiosk Models Grid Selector */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                 {filteredMasterModels.map((m) => {
                   const isSelected = selectedMasterModelCode === m.modelCode
@@ -3761,13 +3784,13 @@ function App() {
                       onClick={() => setSelectedMasterModelCode(m.modelCode)}
                       className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 ${
                         isSelected
-                          ? 'bg-violet-50/90 border-2 border-violet-600 shadow-xs'
+                          ? 'bg-violet-50/80 border-2 border-violet-600 shadow-2xs'
                           : 'bg-white hover:bg-slate-50 border-slate-200'
                       }`}
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span
-                          className={`px-2 py-0.5 rounded font-mono text-xs font-extrabold ${
+                          className={`px-2 py-0.5 rounded font-mono text-xs font-medium ${
                             isSelected
                               ? 'bg-violet-600 text-white'
                               : 'bg-slate-100 text-slate-700'
@@ -3776,12 +3799,12 @@ function App() {
                           {m.modelCode}
                         </span>
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[11px] font-extrabold ${
+                          className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${
                             status === 'NEW'
-                              ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+                              ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
                               : status === 'SOLD_OUT'
-                                ? 'bg-rose-100 text-rose-700 border border-rose-200'
-                                : 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                                ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                           }`}
                         >
                           {status === 'NEW'
@@ -3791,14 +3814,14 @@ function App() {
                               : '판매중'}
                         </span>
                       </div>
-                      <div className="font-bold text-slate-900 text-sm line-clamp-1">
+                      <div className="font-medium text-slate-900 text-sm line-clamp-1">
                         {m.modelName}
                       </div>
                       <div className="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-slate-200/70">
                         <span>구성 BOM 부품</span>
-                        <strong className="text-violet-700 font-extrabold">
-                          총 {m.bom.length}종 (대당 {m.bom.reduce((s, b) => s + b.qtyPerUnit, 0)}개)
-                        </strong>
+                        <span className="text-violet-700 font-semibold">
+                          {m.bom.length}종 (대당 {m.bom.reduce((s, b) => s + b.qtyPerUnit, 0)}개)
+                        </span>
                       </div>
                     </div>
                   )
@@ -3819,14 +3842,14 @@ function App() {
                   return (
                     <div
                       key={model.modelCode}
-                      className="rounded-2xl border-2 border-violet-200 overflow-hidden bg-white space-y-0"
+                      className="rounded-2xl border border-violet-200 overflow-hidden bg-white space-y-0"
                     >
                       {/* Selected Model Header & Product Info Editor */}
-                      <div className="p-5 bg-violet-50/70 border-b border-violet-200 space-y-4">
+                      <div className="p-5 bg-violet-50/50 border-b border-violet-200 space-y-4">
                         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                           <div className="space-y-1.5 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="px-3 py-1 rounded-lg text-sm font-mono font-extrabold bg-violet-600 text-white">
+                              <span className="px-2.5 py-1 rounded-lg text-xs sm:text-sm font-mono font-semibold bg-violet-600 text-white">
                                 {model.modelCode}
                               </span>
                               {isEditingModel ? (
@@ -3840,14 +3863,14 @@ function App() {
                                       e.target.value
                                     )
                                   }
-                                  className="px-3 py-1.5 rounded-xl bg-white border border-violet-400 font-extrabold text-slate-900 text-base w-full sm:w-96"
+                                  className="px-3 py-1.5 rounded-xl bg-white border border-violet-400 font-semibold text-slate-900 text-base w-full sm:w-96"
                                 />
                               ) : (
-                                <strong className="text-lg font-extrabold text-slate-900">
+                                <h3 className="text-base sm:text-lg font-semibold text-slate-900">
                                   {model.modelName}
-                                </strong>
+                                </h3>
                               )}
-                              <span className="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-white text-violet-700 border border-violet-200">
+                              <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-white text-violet-700 border border-violet-200">
                                 표준 BOM 총 {model.bom.length}종 부품
                               </span>
                             </div>
@@ -3862,7 +3885,7 @@ function App() {
                                 className="w-full px-3 py-1.5 rounded-xl bg-white border border-violet-400 text-sm text-slate-700"
                               />
                             ) : (
-                              <p className="text-sm text-slate-600">{model.spec}</p>
+                              <p className="text-xs sm:text-sm text-slate-600">{model.spec}</p>
                             )}
                           </div>
 
@@ -3882,7 +3905,7 @@ function App() {
                                   onClick={() =>
                                     handleUpdateKioskModel(model.modelCode, 'status', st.code)
                                   }
-                                  className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-colors cursor-pointer ${
+                                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
                                     modelStatus === st.code
                                       ? st.code === 'SOLD_OUT'
                                         ? 'bg-rose-600 text-white'
@@ -3902,7 +3925,7 @@ function App() {
                               onClick={() =>
                                 setEditingModelCode(isEditingModel ? null : model.modelCode)
                               }
-                              className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
+                              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors cursor-pointer ${
                                 isEditingModel
                                   ? 'bg-emerald-600 text-white border-emerald-600'
                                   : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
@@ -3911,7 +3934,7 @@ function App() {
                               {isEditingModel ? (
                                 <>
                                   <Check className="w-3.5 h-3.5" />
-                                  제품 정보 수정 완료
+                                  수정 완료
                                 </>
                               ) : (
                                 <>
@@ -3926,27 +3949,27 @@ function App() {
                               onClick={() =>
                                 handleDeleteKioskModel(model.modelCode, model.modelName)
                               }
-                              className="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 transition-colors cursor-pointer"
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-medium bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 transition-colors cursor-pointer"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
-                              제품 삭제
+                              삭제
                             </button>
                           </div>
                         </div>
 
-                        {/* Quick Bar: Add from Existing Warehouse Inventory OR New Part */}
-                        <div className="pt-3 border-t border-violet-200/80 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                        {/* Quick Bar: Add from Existing Warehouse Inventory */}
+                        <div className="pt-3 border-t border-violet-200/70 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                           <div className="flex flex-wrap items-center gap-2 flex-1">
-                            <span className="text-xs font-extrabold text-violet-900 whitespace-nowrap">
-                              • 창고 기존 부품에서 골라 BOM에 넣기:
+                            <span className="text-xs font-medium text-violet-900 whitespace-nowrap">
+                              창고 등록 부품에서 선택해 추가:
                             </span>
                             <select
                               value={selectedExistingPartCode}
                               onChange={(e) => setSelectedExistingPartCode(e.target.value)}
-                              className="px-3 py-2 rounded-xl bg-white border border-violet-300 text-xs sm:text-sm font-semibold text-slate-800 flex-1 min-w-[240px]"
+                              className="px-3 py-1.5 rounded-xl bg-white border border-violet-300 text-xs sm:text-sm text-slate-800 flex-1 min-w-[220px]"
                             >
                               <option value="">
-                                -- 창고에 등록된 부품 선택 (총 {warehouseInventory.length}종) --
+                                -- 창고 부품 선택 (총 {warehouseInventory.length}종) --
                               </option>
                               {warehouseInventory.map((wp) => (
                                 <option key={wp.partCode} value={wp.partCode}>
@@ -3956,7 +3979,7 @@ function App() {
                               ))}
                             </select>
                             <div className="inline-flex items-center gap-1 bg-white px-2.5 py-1.5 rounded-xl border border-violet-300">
-                              <span className="text-xs font-bold text-slate-600">1대당 소요량:</span>
+                              <span className="text-xs text-slate-600">1대당 소요량:</span>
                               <input
                                 type="number"
                                 min={1}
@@ -3964,25 +3987,25 @@ function App() {
                                 onChange={(e) =>
                                   setExistingPartAddQty(Math.max(1, Number(e.target.value) || 1))
                                 }
-                                className="w-14 text-center font-extrabold text-sm text-violet-900 focus:outline-none"
+                                className="w-12 text-center font-semibold text-sm text-violet-900 focus:outline-none"
                               />
                             </div>
                             <button
                               type="button"
                               onClick={handleAddExistingPartToModelBom}
-                              className="px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold bg-violet-600 hover:bg-violet-500 text-white cursor-pointer whitespace-nowrap"
+                              className="px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold bg-violet-600 hover:bg-violet-500 text-white cursor-pointer whitespace-nowrap"
                             >
-                              + 이 모델 BOM에 연결
+                              + BOM에 연결
                             </button>
                           </div>
 
-                          <div className="flex items-center gap-1.5 flex-wrap">
+                          <div className="flex items-center gap-1 flex-wrap">
                             {CATEGORIES.map((cat) => (
                               <button
                                 key={cat}
                                 type="button"
                                 onClick={() => setMasterBomCategoryFilter(cat)}
-                                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold cursor-pointer ${
+                                className={`px-2.5 py-1 rounded-lg text-xs font-medium cursor-pointer ${
                                   masterBomCategoryFilter === cat
                                     ? 'bg-violet-700 text-white'
                                     : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
@@ -3997,10 +4020,10 @@ function App() {
 
                       {/* Add Brand-New Master BOM Part Form */}
                       {showAddMasterBomForm && (
-                        <div className="p-5 bg-emerald-50/70 border-b border-emerald-200 space-y-4">
+                        <div className="p-5 bg-emerald-50/60 border-b border-emerald-200 space-y-4">
                           <div className="flex items-center justify-between">
-                            <div className="text-base font-extrabold text-emerald-950">
-                              [{model.modelCode}] 모델에 새로운 BOM 부품 직접 등록 (창고 재고에도 자동 추가됨)
+                            <div className="text-sm font-semibold text-emerald-950">
+                              [{model.modelCode}] 모델에 새로운 BOM 부품 직접 등록
                             </div>
                             <button
                               type="button"
@@ -4018,7 +4041,7 @@ function App() {
                               onChange={(e) =>
                                 setNewMasterPart({ ...newMasterPart, partCode: e.target.value })
                               }
-                              className="px-3 py-2.5 rounded-xl bg-white border border-emerald-300 font-mono"
+                              className="px-3 py-2 rounded-xl bg-white border border-emerald-300 font-mono"
                             />
                             <select
                               value={newMasterPart.category}
@@ -4028,7 +4051,7 @@ function App() {
                                   category: e.target.value as PartCategory,
                                 })
                               }
-                              className="px-3 py-2.5 rounded-xl bg-white border border-emerald-300 font-bold"
+                              className="px-3 py-2 rounded-xl bg-white border border-emerald-300 font-medium"
                             >
                               {PART_CATEGORIES.map((c) => (
                                 <option key={c} value={c}>
@@ -4043,7 +4066,7 @@ function App() {
                               onChange={(e) =>
                                 setNewMasterPart({ ...newMasterPart, partName: e.target.value })
                               }
-                              className="sm:col-span-2 px-3 py-2.5 rounded-xl bg-white border border-emerald-300 font-bold"
+                              className="sm:col-span-2 px-3 py-2 rounded-xl bg-white border border-emerald-300"
                             />
                             <input
                               type="text"
@@ -4052,7 +4075,7 @@ function App() {
                               onChange={(e) =>
                                 setNewMasterPart({ ...newMasterPart, spec: e.target.value })
                               }
-                              className="sm:col-span-2 px-3 py-2.5 rounded-xl bg-white border border-emerald-300"
+                              className="sm:col-span-2 px-3 py-2 rounded-xl bg-white border border-emerald-300"
                             />
                             <div className="flex gap-1.5">
                               <input
@@ -4066,7 +4089,7 @@ function App() {
                                     qtyPerUnit: Number(e.target.value) || 1,
                                   })
                                 }
-                                className="w-1/2 px-3 py-2.5 rounded-xl bg-white border border-emerald-300 font-bold"
+                                className="w-1/2 px-3 py-2 rounded-xl bg-white border border-emerald-300 font-medium"
                               />
                               <input
                                 type="number"
@@ -4079,7 +4102,7 @@ function App() {
                                     stockQty: Number(e.target.value) || 0,
                                   })
                                 }
-                                className="w-1/2 px-3 py-2.5 rounded-xl bg-white border border-emerald-300 font-bold"
+                                className="w-1/2 px-3 py-2 rounded-xl bg-white border border-emerald-300 font-medium"
                               />
                             </div>
                             <select
@@ -4087,7 +4110,7 @@ function App() {
                               onChange={(e) =>
                                 setNewMasterPart({ ...newMasterPart, supplierId: e.target.value })
                               }
-                              className="px-3 py-2.5 rounded-xl bg-white border border-emerald-300 font-bold"
+                              className="px-3 py-2 rounded-xl bg-white border border-emerald-300 font-medium"
                             >
                               {supplierPartners.map((s) => (
                                 <option key={s.id} value={s.id}>
@@ -4100,14 +4123,14 @@ function App() {
                             <button
                               type="button"
                               onClick={() => setShowAddMasterBomForm(false)}
-                              className="px-4 py-2 rounded-xl text-sm font-semibold bg-white border border-slate-300 cursor-pointer"
+                              className="px-4 py-1.5 rounded-xl text-xs font-medium bg-white border border-slate-300 cursor-pointer"
                             >
                               취소
                             </button>
                             <button
                               type="button"
                               onClick={handleAddMasterBomPart}
-                              className="px-5 py-2 rounded-xl text-sm font-bold bg-emerald-600 text-white cursor-pointer"
+                              className="px-4 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 text-white cursor-pointer"
                             >
                               표준 BOM에 저장
                             </button>
@@ -4115,22 +4138,22 @@ function App() {
                         </div>
                       )}
 
-                      {/* Model's 10+ BOM Parts Table (Editable qtyPerUnit, Spec, Supplier, Stock) */}
+                      {/* Model's BOM Parts Table */}
                       <div className="overflow-x-auto">
-                        <table className="w-full min-w-[1000px] text-left border-collapse text-sm">
+                        <table className="w-full min-w-[980px] text-left border-collapse text-sm">
                           <thead>
-                            <tr className="bg-slate-100 text-slate-700 border-b border-slate-200 whitespace-nowrap">
-                              <th className="py-3 px-4 font-bold w-[60px] text-center">No</th>
-                              <th className="py-3 px-4 font-bold w-[150px]">부품코드 / 카테고리</th>
-                              <th className="py-3 px-4 font-bold min-w-[240px]">부품명 및 상세 규격</th>
-                              <th className="py-3 px-4 text-center font-bold w-[170px]">
-                                1대당 소요량 (실시간 연동)
+                            <tr className="bg-slate-100/80 text-slate-600 border-b border-slate-200 whitespace-nowrap">
+                              <th className="py-3 px-4 font-medium w-[56px] text-center">No</th>
+                              <th className="py-3 px-4 font-medium w-[145px]">부품코드 / 분류</th>
+                              <th className="py-3 px-4 font-medium min-w-[230px]">부품명 및 상세 규격</th>
+                              <th className="py-3 px-4 text-center font-medium w-[165px]">
+                                1대당 소요량
                               </th>
-                              <th className="py-3 px-4 text-center font-bold w-[130px]">
+                              <th className="py-3 px-4 text-center font-medium w-[125px]">
                                 창고 현재고
                               </th>
-                              <th className="py-3 px-4 font-bold min-w-[200px]">지정 발주처</th>
-                              <th className="py-3 px-3 text-center font-bold w-[96px]">수정·삭제</th>
+                              <th className="py-3 px-4 font-medium min-w-[190px]">지정 발주처</th>
+                              <th className="py-3 px-3 text-center font-medium w-[90px]">관리</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-200">
@@ -4139,18 +4162,18 @@ function App() {
                               const isPartEditing = editingMasterPartCode === editKey
                               return (
                                 <tr key={part.partCode} className="hover:bg-slate-50/90">
-                                  <td className="py-3.5 px-4 text-center font-mono text-xs font-bold text-slate-400">
+                                  <td className="py-3 px-4 text-center font-mono text-xs text-slate-400">
                                     {idx + 1}
                                   </td>
-                                  <td className="py-3.5 px-4 whitespace-nowrap">
-                                    <div className="font-mono text-indigo-600 font-bold">
+                                  <td className="py-3 px-4 whitespace-nowrap">
+                                    <div className="font-mono text-indigo-600 font-medium text-xs sm:text-sm">
                                       {part.partCode}
                                     </div>
-                                    <span className="inline-block mt-1 px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold text-xs whitespace-nowrap">
+                                    <span className="inline-block mt-1 px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-xs whitespace-nowrap">
                                       {part.category}
                                     </span>
                                   </td>
-                                  <td className="py-3.5 px-4 break-keep">
+                                  <td className="py-3 px-4 break-keep">
                                     {isPartEditing ? (
                                       <div className="space-y-1.5">
                                         <input
@@ -4164,7 +4187,7 @@ function App() {
                                               e.target.value
                                             )
                                           }
-                                          className="w-full px-2.5 py-1 rounded-lg bg-white border border-violet-400 font-bold text-slate-900"
+                                          className="w-full px-2.5 py-1 rounded-lg bg-white border border-violet-400 font-medium text-slate-900"
                                         />
                                         <input
                                           type="text"
@@ -4182,14 +4205,14 @@ function App() {
                                       </div>
                                     ) : (
                                       <>
-                                        <div className="font-bold text-slate-900">
+                                        <div className="font-medium text-slate-900">
                                           {part.partName}
                                         </div>
                                         <div className="text-xs text-slate-500">{part.spec}</div>
                                       </>
                                     )}
                                   </td>
-                                  <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                                  <td className="py-3 px-4 text-center whitespace-nowrap">
                                     <div className="inline-flex items-center justify-center gap-1.5">
                                       <button
                                         type="button"
@@ -4201,7 +4224,7 @@ function App() {
                                             Math.max(1, part.qtyPerUnit - 1)
                                           )
                                         }
-                                        className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold border border-slate-300 cursor-pointer"
+                                        className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium border border-slate-300 cursor-pointer"
                                       >
                                         -
                                       </button>
@@ -4217,7 +4240,7 @@ function App() {
                                             Math.max(1, Number(e.target.value) || 1)
                                           )
                                         }
-                                        className="w-14 text-center py-1 rounded-lg bg-violet-50 border border-violet-300 font-black text-violet-950 text-sm"
+                                        className="w-14 text-center py-1 rounded-lg bg-violet-50/70 border border-violet-300 font-semibold text-violet-950 text-sm"
                                       />
                                       <button
                                         type="button"
@@ -4229,16 +4252,16 @@ function App() {
                                             part.qtyPerUnit + 1
                                           )
                                         }
-                                        className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold border border-slate-300 cursor-pointer"
+                                        className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium border border-slate-300 cursor-pointer"
                                       >
                                         +
                                       </button>
-                                      <span className="text-xs font-bold text-slate-500">
+                                      <span className="text-xs text-slate-500">
                                         {part.unit}
                                       </span>
                                     </div>
                                   </td>
-                                  <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                                  <td className="py-3 px-4 text-center whitespace-nowrap">
                                     {isPartEditing ? (
                                       <input
                                         type="number"
@@ -4252,20 +4275,20 @@ function App() {
                                             Math.max(0, Number(e.target.value) || 0)
                                           )
                                         }
-                                        className="w-16 text-center py-1 rounded-lg bg-emerald-50 border border-emerald-400 font-bold text-emerald-900"
+                                        className="w-16 text-center py-1 rounded-lg bg-emerald-50 border border-emerald-400 font-medium text-emerald-900"
                                       />
                                     ) : (
                                       <button
                                         type="button"
-                                        title="클릭하여 창고 재고 관리 탭으로 이동"
-                                        onClick={() => setActiveTab('STEP4_INVENTORY')}
-                                        className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-mono font-bold text-xs cursor-pointer"
+                                        title="클릭하여 재고 관리 화면으로 이동"
+                                        onClick={() => setActiveTab('MANAGE_INVENTORY')}
+                                        className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-mono font-medium text-xs cursor-pointer"
                                       >
                                         {part.stockQty} {part.unit}
                                       </button>
                                     )}
                                   </td>
-                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                  <td className="py-3 px-4 whitespace-nowrap">
                                     {isPartEditing ? (
                                       <select
                                         value={part.supplierId}
@@ -4277,7 +4300,7 @@ function App() {
                                             e.target.value
                                           )
                                         }
-                                        className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-violet-400 font-bold text-slate-900 text-xs"
+                                        className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-violet-400 font-medium text-slate-900 text-xs"
                                       >
                                         {supplierPartners.map((s) => (
                                           <option key={s.id} value={s.id}>
@@ -4287,7 +4310,7 @@ function App() {
                                       </select>
                                     ) : (
                                       <>
-                                        <div className="font-bold text-slate-800">
+                                        <div className="font-medium text-slate-800">
                                           {part.supplierName}
                                         </div>
                                         <div className="text-xs text-slate-500">
@@ -4296,7 +4319,7 @@ function App() {
                                       </>
                                     )}
                                   </td>
-                                  <td className="py-3.5 px-3 text-center whitespace-nowrap">
+                                  <td className="py-3 px-3 text-center whitespace-nowrap">
                                     <div className="flex items-center justify-center gap-1">
                                       <button
                                         type="button"
@@ -4342,9 +4365,9 @@ function App() {
                   )
                 })}
             </section>
-          </div>
-        )}
-      </main>
+          )}
+        </main>
+      </div>
 
       {/* Purchase Order Preview Modal */}
       <PurchaseOrderModal

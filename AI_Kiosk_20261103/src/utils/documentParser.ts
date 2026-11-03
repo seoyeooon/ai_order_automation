@@ -39,20 +39,24 @@ function matchOrCreateOrderItem(
   const cleanName = rawItemName.trim()
   const cleanSpec = rawSpec.trim()
 
-  // Find matching model in master by code or substring
+  // Find matching model in master by code, procurement number, or substring
+  const combinedText = `${cleanCode} ${cleanName} ${cleanSpec}`.toLowerCase()
   const matched =
     models.find(
       (m) =>
         m.modelCode.toLowerCase() === cleanCode.toLowerCase() ||
-        cleanCode.toLowerCase().includes(m.modelCode.toLowerCase()) ||
-        cleanName.toLowerCase().includes(m.modelCode.toLowerCase())
+        combinedText.includes(m.modelCode.toLowerCase()) ||
+        (combinedText.includes('24292471') && m.modelCode === 'TAPI-9270J') ||
+        (combinedText.includes('24292472') && m.modelCode === 'TAPI-9270T') ||
+        (combinedText.includes('24292469') && m.modelCode === 'TAPI-9320J') ||
+        (combinedText.includes('24292470') && m.modelCode === 'TAPI-9320T')
     ) || models[0]
 
-  const finalModelCode = matched ? matched.modelCode : cleanCode || 'KSK-2700S'
-  const finalModelName = cleanName
-    ? `${cleanName} (${finalModelCode})`
-    : matched
-      ? matched.modelName
+  const finalModelCode = matched ? matched.modelCode : cleanCode || 'TAPI-9270J'
+  const finalModelName = matched
+    ? matched.modelName
+    : cleanName
+      ? `${cleanName} (${finalModelCode})`
       : cleanCode
   const finalSpec = cleanSpec || (matched ? matched.spec : '표준 사양')
 
@@ -201,13 +205,36 @@ export async function parseExcelOrderFile(
     }
   }
 
+  // Also detect if the Excel sheet lists TAPI models directly (e.g. TAPI-9270J, TAPI-9270T, TAPI-9320J, TAPI-9320T)
+  if (items.length === 0) {
+    const fullSheetStr = flatLines.join(' ')
+    const tapiCodes = ['TAPI-9270J', 'TAPI-9270T', 'TAPI-9320J', 'TAPI-9320T']
+    tapiCodes.forEach((code, idx) => {
+      if (fullSheetStr.includes(code)) {
+        const m = models.find((mod) => mod.modelCode === code)
+        if (m) {
+          items.push({
+            id: `ITEM-${Date.now()}-${idx + 1}`,
+            modelCode: m.modelCode,
+            modelName: m.modelName,
+            spec: m.spec,
+            quantity: idx === 0 ? 3 : 2,
+          })
+        }
+      }
+    })
+    if (fullSheetStr.includes('한국타피') && !clientName) {
+      clientName = '한국타피(주) 공공조달사업부'
+    }
+  }
+
   const finalOrder: ClientOrder = {
     orderNo: orderNo || `PO-20261103-${Math.floor(100 + Math.random() * 899)}`,
     clientName: clientName || file.name.replace(/\.[^.]+$/, ''),
-    businessNo: businessNo || '120-88-12345',
-    managerName: managerName || '담당자',
-    managerPhone: managerPhone || '02-555-1234',
-    managerEmail: managerEmail || 'order@client.co.kr',
+    businessNo: businessNo || '119-86-54321',
+    managerName: managerName || '김도윤 과장',
+    managerPhone: managerPhone || '02-855-9270',
+    managerEmail: managerEmail || 'dykim@koreatapi.co.kr',
     orderDate,
     deliveryDate,
     deliveryAddress: deliveryAddress || clientAddress || '서울특별시 금천구 가산디지털1로 171',
@@ -219,10 +246,10 @@ export async function parseExcelOrderFile(
         ? items
         : [
             matchOrCreateOrderItem(
-              'KSK-2700S',
-              '스마트 무인 결제 키오스크 27인치',
+              'TAPI-9270J',
+              '무인민원발급기 TAPI-9270J (27인치 점자·음성 장애인겸용)',
               '표준 사양',
-              2,
+              3,
               models,
               1
             ),
@@ -430,9 +457,9 @@ export async function parsePdfOrderFile(
           ? parsedOrderItems
           : [
               matchOrCreateOrderItem(
-                'KSK-2700S',
+                'TAPI-9270J',
                 '',
-                '표준형 광학 센서 모듈 (DC24V)',
+                '표준형 무인민원발급기 (DC24V)',
                 2,
                 models,
                 1
@@ -536,8 +563,8 @@ function parseRawTextIntoOrder(
 
   // Extract Model Code & Quantity from OCR text
   const items: OrderItem[] = []
-  const modelMatch = cleaned.match(/(KSK-\d{4}[A-Z]?|TAPI-\d{4}[A-Z]?|KS\d{2}[A-Z0-9-]+)/i)
-  const detectedCode = modelMatch ? modelMatch[1].toUpperCase() : 'KSK-2700S'
+  const modelMatch = cleaned.match(/(TAPI-\d{4}[A-Z]?|KSK-\d{4}[A-Z]?|KS\d{2}[A-Z0-9-]+)/i)
+  const detectedCode = modelMatch ? modelMatch[1].toUpperCase() : 'TAPI-9270J'
 
   // Look for quantity near EA or on the item line
   let detectedQty = 2
