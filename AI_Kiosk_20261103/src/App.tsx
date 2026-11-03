@@ -72,8 +72,19 @@ const PART_CATEGORIES: PartCategory[] = [
   '전원/케이블',
 ]
 
+function formatNowTimestamp(): string {
+  const now = new Date()
+  const yyyy = now.getFullYear()
+  const mm = String(now.getMonth() + 1).padStart(2, '0')
+  const dd = String(now.getDate()).padStart(2, '0')
+  const hh = String(now.getHours()).padStart(2, '0')
+  const mi = String(now.getMinutes()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd} ${hh}:${mi}`
+}
+
 function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('STEP1_SCAN')
+  const logSeqRef = useRef<number>(200)
 
   // Master states (editable in-app!)
   const [partners, setPartners] = useState<PartnerCompany[]>(INITIAL_PARTNERS)
@@ -447,16 +458,6 @@ function App() {
     })
   }, [warehouseInventory, inventoryCategory, inventoryStatusFilter, inventorySearch])
 
-  const formatNowTimestamp = () => {
-    const now = new Date()
-    const yyyy = now.getFullYear()
-    const mm = String(now.getMonth() + 1).padStart(2, '0')
-    const dd = String(now.getDate()).padStart(2, '0')
-    const hh = String(now.getHours()).padStart(2, '0')
-    const mi = String(now.getMinutes()).padStart(2, '0')
-    return `${yyyy}-${mm}-${dd} ${hh}:${mi}`
-  }
-
   // Synchronized Warehouse Stock Updater
   const handleAdjustWarehouseStock = (
     partCode: string,
@@ -502,8 +503,9 @@ function App() {
     const logType: 'IN' | 'OUT' | 'ADJUST' =
       explicitType || (diff > 0 ? 'IN' : diff < 0 ? 'OUT' : 'ADJUST')
 
+    logSeqRef.current += 1
     const newLog: InventoryLogItem = {
-      id: `LOG-${Date.now()}-${Math.floor(Math.random() * 100)}`,
+      id: `LOG-${logSeqRef.current}`,
       timestamp: formatNowTimestamp(),
       type: logType,
       partCode,
