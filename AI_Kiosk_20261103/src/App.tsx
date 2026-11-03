@@ -27,7 +27,7 @@ import {
   X,
 } from 'lucide-react'
 import { PurchaseOrderModal } from './components/PurchaseOrderModal'
-import { INITIAL_PARTNERS, KIOSK_MODELS, SAMPLE_CLIENT_ORDERS } from './data/mockData'
+import { DEFAULT_CLIENT_ORDER, INITIAL_PARTNERS, KIOSK_MODELS } from './data/mockData'
 import type {
   BomPart,
   ClientOrder,
@@ -74,8 +74,7 @@ function App() {
   const [kioskModels, setKioskModels] = useState<KioskModelMaster[]>(KIOSK_MODELS)
 
   // Step 1: Client Order state
-  const [clientOrder, setClientOrder] = useState<ClientOrder>(SAMPLE_CLIENT_ORDERS[0].order)
-  const [selectedSampleIdx, setSelectedSampleIdx] = useState<number>(0)
+  const [clientOrder, setClientOrder] = useState<ClientOrder>(DEFAULT_CLIENT_ORDER)
   const [showAddClientForm, setShowAddClientForm] = useState<boolean>(false)
   const [newClientForm, setNewClientForm] = useState({
     name: '',
@@ -176,33 +175,9 @@ function App() {
     [partners]
   )
 
-  // Trigger sample order load
-  const triggerAiScan = (targetOrder: ClientOrder) => {
-    setIsScanning(true)
-    setUploadedPreviewUrl(null)
-    setScanProgress(25)
-    setScanStageText('1/2 샘플 발주서 문서 구조 분석 중...')
-    setManualOverrides({})
-    setCustomAddedBom([])
-    setDeletedPartCodes([])
-    setPartEdits({})
-    setPoStatusMap({})
-
-    setTimeout(() => {
-      setClientOrder(targetOrder)
-      setScanProgress(100)
-      setIsScanning(false)
-      setScanStageText(
-        `스캔 완료 (${targetOrder.sourceFileName}) · 거래처(${targetOrder.clientName}) 및 품목 추출됨`
-      )
-      showToast(`"${targetOrder.sourceFileName}" 발주서 내용이 오른쪽 정보란에 반영되었습니다.`)
-    }, 450)
-  }
-
   // Real File Upload & AI Document Parsing (Excel / PDF / Image OCR)
   const handleFileUpload = async (file: File | undefined) => {
     if (!file) return
-    setSelectedSampleIdx(-1)
     setIsScanning(true)
     setScanProgress(10)
     setScanStageText(`"${file.name}" 파일 분석 시작...`)
@@ -533,7 +508,7 @@ function App() {
       nextMap[po.poNumber] = 'DOWNLOADED'
     })
     setPoStatusMap(nextMap)
-    showToast(`총 ${purchaseOrders.length}건의 엑셀(CSV) 발주서 일괄 다운로드를 시작했습니다.`)
+    showToast(`총 ${purchaseOrders.length}건의 엑셀(.xlsx) 발주서 일괄 다운로드를 시작했습니다.`)
   }
 
   const handleSendAllPdfEmails = () => {
@@ -842,29 +817,8 @@ function App() {
                   </h2>
                 </div>
                 <p className="text-sm text-slate-500 mt-1">
-                  거래처에서 받은 발주서 파일을 업로드하거나, 등록된 거래처 및 주문 키오스크 수량을 확인·수정하세요.
+                  거래처에서 받은 발주서 파일(PDF·엑셀·이미지)을 업로드하거나, 등록된 거래처 및 주문 키오스크 수량을 확인·수정하세요.
                 </p>
-              </div>
-
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-sm text-slate-600 font-semibold mr-1">샘플 발주서:</span>
-                {SAMPLE_CLIENT_ORDERS.map((sample, idx) => (
-                  <button
-                    key={sample.order.orderNo}
-                    type="button"
-                    onClick={() => {
-                      setSelectedSampleIdx(idx)
-                      triggerAiScan(sample.order)
-                    }}
-                    className={`px-3.5 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer border ${
-                      selectedSampleIdx === idx
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                        : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
-                    }`}
-                  >
-                    {sample.badge}
-                  </button>
-                ))}
               </div>
             </div>
 
@@ -1785,7 +1739,7 @@ function App() {
                   </span>
                 </div>
                 <p className="text-sm text-slate-500 mt-1">
-                  업체별로 자동 작성된 구매발주서입니다. <strong>PDF 다운로드</strong>, <strong>엑셀(CSV) 다운로드</strong>, <strong>프린트(인쇄)</strong> 및 <strong>PDF 파일 이메일 전송</strong>을 지원합니다.
+                  업체별로 자동 작성된 구매발주서입니다. <strong>PDF 다운로드</strong>, <strong>엑셀(.xlsx) 다운로드</strong>, <strong>프린트(인쇄)</strong> 및 <strong>PDF 파일 이메일 전송</strong>을 지원합니다.
                 </p>
               </div>
 
@@ -1796,7 +1750,7 @@ function App() {
                   className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-all cursor-pointer"
                 >
                   <FileSpreadsheet className="w-4 h-4" />
-                  전체 엑셀(CSV) 일괄 다운로드
+                  전체 엑셀(.xlsx) 일괄 다운로드
                 </button>
                 <button
                   type="button"

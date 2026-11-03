@@ -79,7 +79,7 @@ export function PurchaseOrderModal({
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer shadow-xs"
             >
               <FileSpreadsheet className="w-4 h-4" />
-              엑셀(CSV) 다운로드
+              엑셀(.xlsx) 다운로드
             </button>
             <button
               type="button"

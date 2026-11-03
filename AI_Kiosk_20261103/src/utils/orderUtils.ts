@@ -1,3 +1,4 @@
+import XLSXStyle from 'xlsx-js-style'
 import type {
   ClientOrder,
   ExpandedBomItem,
@@ -127,7 +128,7 @@ export function generatePurchaseOrders(
       totalItemTypes,
       totalOrderQty,
       pdfFileName: `${baseFileName}.pdf`,
-      excelFileName: `${baseFileName}.csv`,
+      excelFileName: `${baseFileName}.xlsx`,
       status: downloadedMap[poNumber] || 'READY',
     })
     idx++
@@ -136,58 +137,488 @@ export function generatePurchaseOrders(
   return pos
 }
 
+/**
+ * Generates a richly styled official Purchase Order Excel (.xlsx) workbook
+ * matching the exact layout and design of the PDF/Preview form.
+ */
 export function downloadPurchaseOrderCsv(
   po: GeneratedPurchaseOrder,
   clientOrder: ClientOrder
 ): void {
-  const rows: string[][] = [
-    ['[구매발주서 (PURCHASE ORDER)]', '', '', '', '', '', '', ''],
-    ['발주번호', po.poNumber, '발주일자', po.issueDate, '납기요청일', po.requestedDeliveryDate, '', ''],
-    ['수신처(공급사)', po.supplierName, '사업자번호', po.supplierBizNo, '담당자', po.supplierManager, '연락처', po.supplierPhone],
-    ['연계 수주번호', clientOrder.orderNo, '발주 고객사', clientOrder.clientName, '입고장소', po.deliveryPlace, '', ''],
-    [''],
-    ['No', '부품코드', '부품명', '카테고리', '규격/사양', '적용 키오스크 모델', '단위', '발주수량'],
-  ]
+  const thinBorder = {
+    top: { style: 'thin', color: { rgb: 'CBD5E1' } },
+    bottom: { style: 'thin', color: { rgb: 'CBD5E1' } },
+    left: { style: 'thin', color: { rgb: 'CBD5E1' } },
+    right: { style: 'thin', color: { rgb: 'CBD5E1' } },
+  }
+  const darkBorder = {
+    top: { style: 'medium', color: { rgb: '1E293B' } },
+    bottom: { style: 'medium', color: { rgb: '1E293B' } },
+    left: { style: 'thin', color: { rgb: 'CBD5E1' } },
+    right: { style: 'thin', color: { rgb: 'CBD5E1' } },
+  }
 
-  po.items.forEach((item, index) => {
-    const modelsText = item.sourceModels
-      .map((m) => `${m.modelCode}(${m.orderQty}대→${m.subTotalQty}${item.unit})`)
-      .join(' / ')
-    rows.push([
-      String(index + 1),
-      item.partCode,
-      item.partName,
-      item.category,
-      item.spec,
-      modelsText,
-      item.unit,
-      String(item.adjustedOrderQty),
-    ])
+  type CellObj = {
+    v: string | number
+    t?: 's' | 'n'
+    s?: Record<string, unknown>
+  }
+
+  const emptyCell = (style: Record<string, unknown> = { border: thinBorder }): CellObj => ({
+    v: '',
+    t: 's',
+    s: style,
   })
 
-  rows.push([''])
-  rows.push(['', '', '', '', '', '발주 품목 종수', `${po.totalItemTypes}종`, ''])
-  rows.push(['', '', '', '', '', '총 발주 수량 합계', '', String(po.totalOrderQty)])
+  const rows: CellObj[][] = []
+  const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = []
 
-  const csvContent =
-    '\uFEFF' +
-    rows
-      .map((row) =>
-        row
-          .map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`)
-          .join(',')
-      )
-      .join('\r\n')
+  // Row 0: Top Accent Banner (A1:H1)
+  const bannerStyle = {
+    fill: { fgColor: { rgb: '4F46E5' } },
+    font: { name: '맑은 고딕', sz: 10, bold: true, color: { rgb: 'FFFFFF' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+  }
+  rows.push([
+    {
+      v: 'OFFICIAL PURCHASE ORDER  ·  AI 기반 키오스크 매출·매입 발주 자동화 시스템',
+      t: 's',
+      s: bannerStyle,
+    },
+    emptyCell(bannerStyle),
+    emptyCell(bannerStyle),
+    emptyCell(bannerStyle),
+    emptyCell(bannerStyle),
+    emptyCell(bannerStyle),
+    emptyCell(bannerStyle),
+    emptyCell(bannerStyle),
+  ])
+  merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 7 } })
 
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.setAttribute('download', po.excelFileName)
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
+  // Row 1 & Row 2: Title (A2:D3) + Approval Box (E2:H3)
+  const titleStyle = {
+    font: { name: '맑은 고딕', sz: 22, bold: true, color: { rgb: '0F172A' } },
+    alignment: { horizontal: 'left', vertical: 'center' },
+  }
+  const apprSideStyle = {
+    fill: { fgColor: { rgb: 'E2E8F0' } },
+    font: { name: '맑은 고딕', sz: 10, bold: true, color: { rgb: '1E293B' } },
+    alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+    border: thinBorder,
+  }
+  const apprHeaderStyle = {
+    fill: { fgColor: { rgb: 'F1F5F9' } },
+    font: { name: '맑은 고딕', sz: 10, bold: true, color: { rgb: '334155' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: thinBorder,
+  }
+  const apprValStyle = {
+    fill: { fgColor: { rgb: 'FFFFFF' } },
+    font: { name: '맑은 고딕', sz: 10, bold: true, color: { rgb: '4338CA' } },
+    alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+    border: thinBorder,
+  }
+  const apprStampStyle = {
+    fill: { fgColor: { rgb: 'FFF1F2' } },
+    font: { name: '맑은 고딕', sz: 10, bold: true, color: { rgb: 'E11D48' } },
+    alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+    border: thinBorder,
+  }
+
+  rows.push([
+    { v: '구 매 발 주 서', t: 's', s: titleStyle },
+    emptyCell({}),
+    emptyCell({}),
+    emptyCell({}),
+    { v: '결\n재', t: 's', s: apprSideStyle },
+    { v: '담 당', t: 's', s: apprHeaderStyle },
+    { v: '검 토', t: 's', s: apprHeaderStyle },
+    { v: '승 인', t: 's', s: apprHeaderStyle },
+  ])
+  rows.push([
+    emptyCell({}),
+    emptyCell({}),
+    emptyCell({}),
+    emptyCell({}),
+    emptyCell(apprSideStyle),
+    { v: `AI자동발주\n(${po.issueDate.slice(5)})`, t: 's', s: apprValStyle },
+    { v: '구매팀장\n(승인필)', t: 's', s: apprValStyle },
+    { v: '대표이사\n(법인인감 날인필)', t: 's', s: apprStampStyle },
+  ])
+  merges.push({ s: { r: 1, c: 0 }, e: { r: 2, c: 3 } })
+  merges.push({ s: { r: 1, c: 4 }, e: { r: 2, c: 4 } })
+
+  // Row 3: Blank spacer
+  rows.push(Array.from({ length: 8 }, () => emptyCell({})))
+
+  // Row 4: Document Meta Row (발주번호 / 발주일자 / 납기요청일)
+  const metaLabelStyle = {
+    fill: { fgColor: { rgb: 'EEF2FF' } },
+    font: { name: '맑은 고딕', sz: 10, bold: true, color: { rgb: '312E81' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: thinBorder,
+  }
+  const metaValStyle = {
+    fill: { fgColor: { rgb: 'FFFFFF' } },
+    font: { name: '맑은 고딕', sz: 11, bold: true, color: { rgb: '0F172A' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: thinBorder,
+  }
+  const metaDueStyle = {
+    fill: { fgColor: { rgb: 'FFFFFF' } },
+    font: { name: '맑은 고딕', sz: 11, bold: true, color: { rgb: '4338CA' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: thinBorder,
+  }
+
+  rows.push([
+    { v: '발주번호', t: 's', s: metaLabelStyle },
+    { v: po.poNumber, t: 's', s: metaValStyle },
+    emptyCell(metaValStyle),
+    { v: '발주일자', t: 's', s: metaLabelStyle },
+    { v: po.issueDate, t: 's', s: metaValStyle },
+    { v: '입고 납기요청일', t: 's', s: metaLabelStyle },
+    { v: po.requestedDeliveryDate, t: 's', s: metaDueStyle },
+    emptyCell(metaDueStyle),
+  ])
+  merges.push({ s: { r: 4, c: 1 }, e: { r: 4, c: 2 } })
+  merges.push({ s: { r: 4, c: 6 }, e: { r: 4, c: 7 } })
+
+  // Row 5: Blank spacer
+  rows.push(Array.from({ length: 8 }, () => emptyCell({})))
+
+  // Row 6: Party Section Headers (수신처 vs 발신처)
+  const leftSecHdr = {
+    fill: { fgColor: { rgb: '4338CA' } },
+    font: { name: '맑은 고딕', sz: 11, bold: true, color: { rgb: 'FFFFFF' } },
+    alignment: { horizontal: 'left', vertical: 'center' },
+    border: thinBorder,
+  }
+  const rightSecHdr = {
+    fill: { fgColor: { rgb: '1E293B' } },
+    font: { name: '맑은 고딕', sz: 11, bold: true, color: { rgb: 'FFFFFF' } },
+    alignment: { horizontal: 'left', vertical: 'center' },
+    border: thinBorder,
+  }
+  rows.push([
+    { v: '  ■ 수신처 (공급사 / 매입 발주처)', t: 's', s: leftSecHdr },
+    emptyCell(leftSecHdr),
+    emptyCell(leftSecHdr),
+    emptyCell(leftSecHdr),
+    { v: '  ■ 발신처 (발주 기업)', t: 's', s: rightSecHdr },
+    emptyCell(rightSecHdr),
+    emptyCell(rightSecHdr),
+    emptyCell(rightSecHdr),
+  ])
+  merges.push({ s: { r: 6, c: 0 }, e: { r: 6, c: 3 } })
+  merges.push({ s: { r: 6, c: 4 }, e: { r: 6, c: 7 } })
+
+  // Rows 7..10: Party Details
+  const fieldLblStyle = {
+    fill: { fgColor: { rgb: 'F8FAFC' } },
+    font: { name: '맑은 고딕', sz: 10, bold: true, color: { rgb: '475569' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: thinBorder,
+  }
+  const fieldValBoldStyle = {
+    fill: { fgColor: { rgb: 'FFFFFF' } },
+    font: { name: '맑은 고딕', sz: 11, bold: true, color: { rgb: '0F172A' } },
+    alignment: { horizontal: 'left', vertical: 'center' },
+    border: thinBorder,
+  }
+  const fieldValStyle = {
+    fill: { fgColor: { rgb: 'FFFFFF' } },
+    font: { name: '맑은 고딕', sz: 10, color: { rgb: '1E293B' } },
+    alignment: { horizontal: 'left', vertical: 'center' },
+    border: thinBorder,
+  }
+
+  const partyRows: [string, string, string, string, boolean][] = [
+    [
+      '상 호 (법인명)',
+      ` ${po.supplierName} 귀하`,
+      '상 호 (법인명)',
+      ' (주)에이아이키오스크 테크놀로지 (인)',
+      true,
+    ],
+    [
+      '사업자등록번호',
+      ` ${po.supplierBizNo}`,
+      '사업자등록번호',
+      ' 129-86-77012',
+      false,
+    ],
+    [
+      '담당자 / 연락처',
+      ` ${po.supplierManager} (${po.supplierPhone})`,
+      '입 고 장 소',
+      ` ${po.deliveryPlace}`,
+      false,
+    ],
+    [
+      '수신 이메일',
+      ` ${po.supplierEmail}`,
+      '연계 수주처',
+      ` ${clientOrder.clientName} (${clientOrder.orderNo})`,
+      false,
+    ],
+  ]
+
+  partyRows.forEach(([lLbl, lVal, rLbl, rVal, isBold], idx) => {
+    const rIndex = 7 + idx
+    const vStyle = isBold ? fieldValBoldStyle : fieldValStyle
+    rows.push([
+      { v: lLbl, t: 's', s: fieldLblStyle },
+      { v: lVal, t: 's', s: vStyle },
+      emptyCell(vStyle),
+      emptyCell(vStyle),
+      { v: rLbl, t: 's', s: fieldLblStyle },
+      { v: rVal, t: 's', s: vStyle },
+      emptyCell(vStyle),
+      emptyCell(vStyle),
+    ])
+    merges.push({ s: { r: rIndex, c: 1 }, e: { r: rIndex, c: 3 } })
+    merges.push({ s: { r: rIndex, c: 5 }, e: { r: rIndex, c: 7 } })
+  })
+
+  // Row 11: Blank spacer
+  rows.push(Array.from({ length: 8 }, () => emptyCell({})))
+
+  // Row 12: Summary Strip
+  const sumLeftStyle = {
+    fill: { fgColor: { rgb: 'EEF2FF' } },
+    font: { name: '맑은 고딕', sz: 10, bold: true, color: { rgb: '1E1B4B' } },
+    alignment: { horizontal: 'left', vertical: 'center' },
+    border: thinBorder,
+  }
+  const sumRightStyle = {
+    fill: { fgColor: { rgb: 'EEF2FF' } },
+    font: { name: '맑은 고딕', sz: 11, bold: true, color: { rgb: '4338CA' } },
+    alignment: { horizontal: 'right', vertical: 'center' },
+    border: thinBorder,
+  }
+  rows.push([
+    {
+      v: '  아래와 같이 키오스크 제조용 자재(BOM)를 발주하오니 납기일 내 납품하여 주시기 바랍니다.',
+      t: 's',
+      s: sumLeftStyle,
+    },
+    emptyCell(sumLeftStyle),
+    emptyCell(sumLeftStyle),
+    emptyCell(sumLeftStyle),
+    emptyCell(sumLeftStyle),
+    {
+      v: `총 발주 품목 ${po.totalItemTypes}종  |  총 발주수량 ${po.totalOrderQty.toLocaleString()} EA·SET  `,
+      t: 's',
+      s: sumRightStyle,
+    },
+    emptyCell(sumRightStyle),
+    emptyCell(sumRightStyle),
+  ])
+  merges.push({ s: { r: 12, c: 0 }, e: { r: 12, c: 4 } })
+  merges.push({ s: { r: 12, c: 5 }, e: { r: 12, c: 7 } })
+
+  // Row 13: Blank spacer
+  rows.push(Array.from({ length: 8 }, () => emptyCell({})))
+
+  // Row 14: Item Table Header
+  const tblHeaderStyle = {
+    fill: { fgColor: { rgb: '1E293B' } },
+    font: { name: '맑은 고딕', sz: 10, bold: true, color: { rgb: 'FFFFFF' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: darkBorder,
+  }
+  rows.push([
+    { v: 'No', t: 's', s: tblHeaderStyle },
+    { v: '부품코드', t: 's', s: tblHeaderStyle },
+    { v: '분류', t: 's', s: tblHeaderStyle },
+    { v: '품목명', t: 's', s: tblHeaderStyle },
+    { v: '상세 규격 및 사양', t: 's', s: tblHeaderStyle },
+    { v: '적용 키오스크 (산출근거)', t: 's', s: tblHeaderStyle },
+    { v: '단위', t: 's', s: tblHeaderStyle },
+    { v: '발주수량', t: 's', s: tblHeaderStyle },
+  ])
+
+  // Item Rows
+  const minItemRows = Math.max(po.items.length, 5)
+  for (let i = 0; i < minItemRows; i++) {
+    const item = po.items[i]
+    const rowBg = i % 2 === 1 ? 'F8FAFC' : 'FFFFFF'
+
+    const baseCenter = {
+      fill: { fgColor: { rgb: rowBg } },
+      font: { name: '맑은 고딕', sz: 10, color: { rgb: '334155' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+      border: thinBorder,
+    }
+    const codeStyle = {
+      fill: { fgColor: { rgb: rowBg } },
+      font: { name: 'Consolas', sz: 10, bold: true, color: { rgb: '4338CA' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+      border: thinBorder,
+    }
+    const nameStyle = {
+      fill: { fgColor: { rgb: rowBg } },
+      font: { name: '맑은 고딕', sz: 10, bold: true, color: { rgb: '0F172A' } },
+      alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+      border: thinBorder,
+    }
+    const specStyle = {
+      fill: { fgColor: { rgb: rowBg } },
+      font: { name: '맑은 고딕', sz: 9, color: { rgb: '475569' } },
+      alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+      border: thinBorder,
+    }
+    const modelStyle = {
+      fill: { fgColor: { rgb: rowBg } },
+      font: { name: '맑은 고딕', sz: 9, bold: true, color: { rgb: '4F46E5' } },
+      alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+      border: thinBorder,
+    }
+    const qtyStyle = {
+      fill: { fgColor: { rgb: rowBg } },
+      font: { name: '맑은 고딕', sz: 11, bold: true, color: { rgb: '0F172A' } },
+      alignment: { horizontal: 'right', vertical: 'center' },
+      numFmt: '#,##0',
+      border: thinBorder,
+    }
+
+    if (item) {
+      const modelsText = item.sourceModels
+        .map((m) => `${m.modelCode}(${m.orderQty}대→${m.subTotalQty}${item.unit})`)
+        .join(', ')
+      rows.push([
+        { v: i + 1, t: 'n', s: baseCenter },
+        { v: item.partCode, t: 's', s: codeStyle },
+        { v: item.category, t: 's', s: baseCenter },
+        { v: item.partName, t: 's', s: nameStyle },
+        { v: item.spec, t: 's', s: specStyle },
+        { v: modelsText, t: 's', s: modelStyle },
+        { v: item.unit, t: 's', s: baseCenter },
+        { v: item.adjustedOrderQty, t: 'n', s: qtyStyle },
+      ])
+    } else {
+      rows.push([
+        { v: i + 1, t: 'n', s: baseCenter },
+        { v: '-', t: 's', s: baseCenter },
+        { v: '-', t: 's', s: baseCenter },
+        { v: '-', t: 's', s: baseCenter },
+        { v: '-', t: 's', s: baseCenter },
+        { v: '-', t: 's', s: baseCenter },
+        { v: '-', t: 's', s: baseCenter },
+        { v: '-', t: 's', s: baseCenter },
+      ])
+    }
+  }
+
+  // Total Footer Row
+  const totalRowIdx = rows.length
+  const totalLblStyle = {
+    fill: { fgColor: { rgb: 'F1F5F9' } },
+    font: { name: '맑은 고딕', sz: 11, bold: true, color: { rgb: '1E293B' } },
+    alignment: { horizontal: 'right', vertical: 'center' },
+    border: darkBorder,
+  }
+  const totalUnitStyle = {
+    fill: { fgColor: { rgb: 'F1F5F9' } },
+    font: { name: '맑은 고딕', sz: 10, bold: true, color: { rgb: '475569' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: darkBorder,
+  }
+  const totalQtyStyle = {
+    fill: { fgColor: { rgb: 'EEF2FF' } },
+    font: { name: '맑은 고딕', sz: 12, bold: true, color: { rgb: '4338CA' } },
+    alignment: { horizontal: 'right', vertical: 'center' },
+    numFmt: '#,##0',
+    border: darkBorder,
+  }
+
+  rows.push([
+    { v: `발주 수량 총 합계 (품목 ${po.totalItemTypes}종)  `, t: 's', s: totalLblStyle },
+    emptyCell(totalLblStyle),
+    emptyCell(totalLblStyle),
+    emptyCell(totalLblStyle),
+    emptyCell(totalLblStyle),
+    emptyCell(totalLblStyle),
+    { v: '합계', t: 's', s: totalUnitStyle },
+    { v: po.totalOrderQty, t: 'n', s: totalQtyStyle },
+  ])
+  merges.push({ s: { r: totalRowIdx, c: 0 }, e: { r: totalRowIdx, c: 5 } })
+
+  // Blank spacer
+  rows.push(Array.from({ length: 8 }, () => emptyCell({})))
+
+  // Notes Rows
+  const noteHeaderStyle = {
+    fill: { fgColor: { rgb: 'F8FAFC' } },
+    font: { name: '맑은 고딕', sz: 10, bold: true, color: { rgb: '1E293B' } },
+    alignment: { horizontal: 'left', vertical: 'center' },
+    border: thinBorder,
+  }
+  const noteBodyStyle = {
+    fill: { fgColor: { rgb: 'F8FAFC' } },
+    font: { name: '맑은 고딕', sz: 9.5, color: { rgb: '475569' } },
+    alignment: { horizontal: 'left', vertical: 'center' },
+    border: thinBorder,
+  }
+
+  const noteLines: [string, Record<string, unknown>][] = [
+    ['  ※ [납품 및 검수 유의사항]', noteHeaderStyle],
+    [
+      `  1. 납품 시 본 발주서 번호(${po.poNumber})가 기재된 거래명세서 및 시험성적서를 동봉하여 주시기 바랍니다.`,
+      noteBodyStyle,
+    ],
+    [
+      `  2. 지정된 입고 납기요청일(${po.requestedDeliveryDate})까지 당사 지정 입고장소(${po.deliveryPlace})로 납품 바랍니다.`,
+      noteBodyStyle,
+    ],
+    [
+      '  3. 발행시스템: AI 기반 키오스크 매출·매입 발주 자동화 웹 시스템   |   수령 확인 (공급사 인): ________________ (인)',
+      noteHeaderStyle,
+    ],
+  ]
+
+  noteLines.forEach(([text, style]) => {
+    const rIdx = rows.length
+    rows.push([
+      { v: text, t: 's', s: style },
+      emptyCell(style),
+      emptyCell(style),
+      emptyCell(style),
+      emptyCell(style),
+      emptyCell(style),
+      emptyCell(style),
+      emptyCell(style),
+    ])
+    merges.push({ s: { r: rIdx, c: 0 }, e: { r: rIdx, c: 7 } })
+  })
+
+  const ws = XLSXStyle.utils.aoa_to_sheet(rows)
+  ws['!merges'] = merges
+  ws['!cols'] = [
+    { wch: 15 }, // A: No / 좌측 라벨
+    { wch: 18 }, // B: 부품코드
+    { wch: 15 }, // C: 분류
+    { wch: 34 }, // D: 품목명
+    { wch: 16 }, // E: 상세규격 / 우측 라벨
+    { wch: 26 }, // F: 적용 모델
+    { wch: 12 }, // G: 단위
+    { wch: 16 }, // H: 발주수량
+  ]
+  ws['!rows'] = rows.map((_, idx) => {
+    if (idx === 0) return { hpt: 24 }
+    if (idx === 1) return { hpt: 22 }
+    if (idx === 2) return { hpt: 34 }
+    if (idx === 3 || idx === 5 || idx === 11 || idx === 13) return { hpt: 10 }
+    if (idx === 4 || idx === 6 || idx === 12 || idx === 14) return { hpt: 26 }
+    if (idx >= 7 && idx <= 10) return { hpt: 23 }
+    if (idx === totalRowIdx) return { hpt: 28 }
+    return { hpt: 25 }
+  })
+
+  const wb = XLSXStyle.utils.book_new()
+  XLSXStyle.utils.book_append_sheet(wb, ws, '구매발주서')
+  XLSXStyle.writeFile(wb, po.excelFileName)
 }
 
 export function openPurchaseOrderPrintOrPdf(
