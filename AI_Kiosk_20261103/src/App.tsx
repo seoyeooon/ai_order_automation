@@ -1503,17 +1503,17 @@ function App() {
 
             {/* BOM Table */}
             <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="w-full text-left border-collapse text-sm">
+              <table className="w-full min-w-[1040px] text-left border-collapse text-sm">
                 <thead>
-                  <tr className="bg-slate-100 text-slate-700 border-b border-slate-200">
-                    <th className="py-3.5 px-4 font-bold">부품코드 / 분류</th>
-                    <th className="py-3.5 px-4 font-bold">부품명 및 상세 규격</th>
-                    <th className="py-3.5 px-4 font-bold">산출 근거 (적용 키오스크)</th>
-                    <th className="py-3.5 px-4 text-right font-bold">총 필요수량</th>
-                    <th className="py-3.5 px-4 text-right font-bold">현재고</th>
-                    <th className="py-3.5 px-4 text-center font-bold w-40">실제 발주수량</th>
-                    <th className="py-3.5 px-4 font-bold">매입 발주처 (공급사)</th>
-                    <th className="py-3.5 px-3 text-center font-bold w-24">수정·삭제</th>
+                  <tr className="bg-slate-100 text-slate-700 border-b border-slate-200 whitespace-nowrap">
+                    <th className="py-3.5 px-4 font-bold w-[150px]">부품코드 / 분류</th>
+                    <th className="py-3.5 px-4 font-bold min-w-[240px]">부품명 및 상세 규격</th>
+                    <th className="py-3.5 px-4 font-bold min-w-[180px]">산출 근거 (적용 키오스크)</th>
+                    <th className="py-3.5 px-4 text-right font-bold w-[115px]">총 필요수량</th>
+                    <th className="py-3.5 px-4 text-right font-bold w-[110px]">창고 현재고</th>
+                    <th className="py-3.5 px-4 text-center font-bold w-[140px]">실제 발주수량</th>
+                    <th className="py-3.5 px-4 font-bold min-w-[200px]">매입 발주처 (공급사)</th>
+                    <th className="py-3.5 px-3 text-center font-bold w-[96px]">수정·삭제</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
@@ -1521,16 +1521,16 @@ function App() {
                     const isEditing = editingPartCode === part.partCode
                     return (
                       <tr key={part.partCode} className="hover:bg-slate-50/90 transition-colors">
-                        <td className="py-4 px-4">
+                        <td className="py-4 px-4 whitespace-nowrap align-middle">
                           <div className="font-mono font-bold text-indigo-600 text-sm">
                             {part.partCode}
                           </div>
-                          <span className="inline-block mt-1 px-2.5 py-0.5 rounded-md text-xs font-semibold bg-slate-100 text-slate-700">
+                          <span className="inline-block mt-1 px-2.5 py-0.5 rounded-md text-xs font-semibold bg-slate-100 text-slate-700 whitespace-nowrap">
                             {part.category}
                           </span>
                         </td>
 
-                        <td className="py-4 px-4">
+                        <td className="py-4 px-4 align-middle break-keep">
                           {isEditing ? (
                             <div className="space-y-1.5">
                               <input
@@ -1552,31 +1552,30 @@ function App() {
                             </div>
                           ) : (
                             <>
-                              <div className="font-bold text-slate-900 text-base">
+                              <div className="font-bold text-slate-900 text-base break-keep">
                                 {part.partName}
                               </div>
-                              <div className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                              <div className="text-xs sm:text-sm text-slate-500 mt-0.5 break-keep">
                                 {part.spec}
                               </div>
                             </>
                           )}
                         </td>
 
-                        <td className="py-4 px-4">
+                        <td className="py-4 px-4 align-middle">
                           <div className="flex flex-wrap gap-1.5">
                             {part.sourceModels.map((m) => (
                               <span
                                 key={m.modelCode}
-                                className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-100 font-semibold text-xs"
+                                className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-100 font-semibold text-xs whitespace-nowrap"
                               >
-                                {m.modelCode}: {m.orderQty}대 → {m.subTotalQty}
-                                {part.unit}
+                                {m.modelCode}: {m.orderQty}대 → {m.subTotalQty} {part.unit}
                               </span>
                             ))}
                           </div>
                         </td>
 
-                        <td className="py-4 px-4 text-right font-mono font-bold text-slate-800 text-base">
+                        <td className="py-4 px-4 text-right font-mono font-bold text-slate-800 text-base whitespace-nowrap align-middle">
                           {isEditing ? (
                             <input
                               type="number"
@@ -1592,11 +1591,14 @@ function App() {
                               className="w-20 text-right px-2 py-1 rounded-lg bg-white border border-violet-400 font-bold"
                             />
                           ) : (
-                            `${part.grossRequiredQty.toLocaleString()} ${part.unit}`
+                            <span>
+                              {part.grossRequiredQty.toLocaleString()}{' '}
+                              <span className="text-xs font-semibold text-slate-500">{part.unit}</span>
+                            </span>
                           )}
                         </td>
 
-                        <td className="py-4 px-4 text-right font-mono font-bold text-emerald-600 text-sm">
+                        <td className="py-4 px-4 text-right font-mono font-bold text-emerald-600 text-sm whitespace-nowrap align-middle">
                           {isEditing ? (
                             <input
                               type="number"
@@ -1612,11 +1614,14 @@ function App() {
                               className="w-16 text-right px-2 py-1 rounded-lg bg-white border border-emerald-400 font-bold"
                             />
                           ) : (
-                            `${deductStock ? `-${part.stockQty}` : part.stockQty} ${part.unit}`
+                            <span className="inline-flex items-center justify-end gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200/80 text-emerald-700 whitespace-nowrap">
+                              <span>{deductStock ? `-${part.stockQty}` : part.stockQty}</span>
+                              <span className="text-xs font-semibold">{part.unit}</span>
+                            </span>
                           )}
                         </td>
 
-                        <td className="py-4 px-4">
+                        <td className="py-4 px-4 whitespace-nowrap align-middle">
                           <div className="flex items-center justify-center gap-1.5">
                             <input
                               type="number"
@@ -1630,13 +1635,13 @@ function App() {
                               }
                               className="w-20 text-center py-1.5 rounded-xl bg-violet-50 border border-violet-300 text-violet-950 font-black text-base focus:outline-none focus:border-violet-600"
                             />
-                            <span className="text-slate-600 font-semibold text-xs">
+                            <span className="text-slate-600 font-semibold text-xs whitespace-nowrap">
                               {part.unit}
                             </span>
                           </div>
                         </td>
 
-                        <td className="py-4 px-4">
+                        <td className="py-4 px-4 align-middle whitespace-nowrap">
                           {isEditing ? (
                             <select
                               value={part.supplierId}
@@ -1662,7 +1667,7 @@ function App() {
                           )}
                         </td>
 
-                        <td className="py-4 px-3 text-center">
+                        <td className="py-4 px-3 text-center whitespace-nowrap align-middle">
                           <div className="flex items-center justify-center gap-1">
                             <button
                               type="button"
@@ -2057,9 +2062,9 @@ function App() {
               )}
 
               <div className="overflow-x-auto rounded-xl border border-slate-200">
-                <table className="w-full text-left border-collapse text-sm">
+                <table className="w-full min-w-[960px] text-left border-collapse text-sm">
                   <thead>
-                    <tr className="bg-slate-100 text-slate-700 border-b border-slate-200">
+                    <tr className="bg-slate-100 text-slate-700 border-b border-slate-200 whitespace-nowrap">
                       <th className="py-3 px-4 font-bold">구분</th>
                       <th className="py-3 px-4 font-bold">업체명</th>
                       <th className="py-3 px-4 font-bold">사업자번호</th>
@@ -2076,9 +2081,9 @@ function App() {
                         const isEdit = editingPartnerId === partner.id
                         return (
                           <tr key={partner.id} className="hover:bg-slate-50">
-                            <td className="py-3.5 px-4">
+                            <td className="py-3.5 px-4 whitespace-nowrap">
                               <span
-                                className={`px-2.5 py-1 rounded-md text-xs font-bold ${
+                                className={`px-2.5 py-1 rounded-md text-xs font-bold whitespace-nowrap ${
                                   partner.type === 'CLIENT'
                                     ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
                                     : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
@@ -2087,7 +2092,7 @@ function App() {
                                 {partner.type === 'CLIENT' ? '수주 고객사' : '매입 발주처'}
                               </span>
                             </td>
-                            <td className="py-3.5 px-4 font-bold text-slate-900">
+                            <td className="py-3.5 px-4 font-bold text-slate-900 whitespace-nowrap">
                               {isEdit ? (
                                 <input
                                   type="text"
@@ -2360,9 +2365,9 @@ function App() {
                     </div>
 
                     <div className="overflow-x-auto">
-                      <table className="w-full text-left border-collapse text-sm">
+                      <table className="w-full min-w-[900px] text-left border-collapse text-sm">
                         <thead>
-                          <tr className="bg-slate-100 text-slate-700 border-b border-slate-200">
+                          <tr className="bg-slate-100 text-slate-700 border-b border-slate-200 whitespace-nowrap">
                             <th className="py-3 px-4 font-bold">부품코드</th>
                             <th className="py-3 px-4 font-bold">카테고리</th>
                             <th className="py-3 px-4 font-bold">부품명 / 규격</th>
@@ -2375,25 +2380,25 @@ function App() {
                         <tbody className="divide-y divide-slate-200">
                           {model.bom.map((part) => (
                             <tr key={part.partCode} className="hover:bg-slate-50">
-                              <td className="py-3.5 px-4 font-mono text-indigo-600 font-bold">
+                              <td className="py-3.5 px-4 font-mono text-indigo-600 font-bold whitespace-nowrap">
                                 {part.partCode}
                               </td>
-                              <td className="py-3.5 px-4">
-                                <span className="px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold text-xs">
+                              <td className="py-3.5 px-4 whitespace-nowrap">
+                                <span className="px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold text-xs whitespace-nowrap">
                                   {part.category}
                                 </span>
                               </td>
-                              <td className="py-3.5 px-4">
+                              <td className="py-3.5 px-4 break-keep">
                                 <div className="font-bold text-slate-900">{part.partName}</div>
                                 <div className="text-xs text-slate-500">{part.spec}</div>
                               </td>
-                              <td className="py-3.5 px-4 text-center font-extrabold text-slate-900">
+                              <td className="py-3.5 px-4 text-center font-extrabold text-slate-900 whitespace-nowrap">
                                 {part.qtyPerUnit} {part.unit}
                               </td>
-                              <td className="py-3.5 px-4 text-center text-emerald-600 font-bold">
+                              <td className="py-3.5 px-4 text-center text-emerald-600 font-bold whitespace-nowrap">
                                 {part.stockQty} {part.unit}
                               </td>
-                              <td className="py-3.5 px-4">
+                              <td className="py-3.5 px-4 whitespace-nowrap">
                                 <div className="font-bold text-slate-800">{part.supplierName}</div>
                                 <div className="text-xs text-slate-500">
                                   {part.supplierManager} ({part.supplierPhone})
