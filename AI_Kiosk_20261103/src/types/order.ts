@@ -30,6 +30,18 @@ export type PartCategory =
   | '함체/기구물'
   | '전원/케이블'
 
+export interface PartnerCompany {
+  id: string
+  type: 'CLIENT' | 'SUPPLIER'
+  name: string
+  bizNo: string
+  manager: string
+  phone: string
+  email: string
+  address: string
+  leadTimeDays: number
+}
+
 export interface BomPart {
   partCode: string
   partName: string
@@ -75,6 +87,7 @@ export interface GeneratedPurchaseOrder {
   items: ExpandedBomItem[]
   totalItemTypes: number
   totalOrderQty: number
-  fileName: string
+  pdfFileName: string
+  excelFileName: string
   status: 'READY' | 'DOWNLOADED' | 'SENT'
 }
