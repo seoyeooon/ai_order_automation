@@ -43,6 +43,7 @@ import {
   generatePurchaseOrders,
   openPurchaseOrderPrintOrPdf,
 } from './utils/orderUtils'
+import { parseUploadedOrderDocument } from './utils/documentParser'
 
 type ActiveTab = 'STEP1_SCAN' | 'STEP2_BOM' | 'STEP3_PO' | 'STEP4_MASTER'
 
@@ -85,12 +86,13 @@ function App() {
     address: '',
   })
 
-  // AI Scanning simulation states
+  // AI Scanning states
   const [isScanning, setIsScanning] = useState<boolean>(false)
   const [scanProgress, setScanProgress] = useState<number>(100)
   const [scanStageText, setScanStageText] = useState<string>(
     'AI 스캔 완료 · 거래처 정보 및 수주 품목이 추출되었습니다.'
   )
+  const [uploadedPreviewUrl, setUploadedPreviewUrl] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState<boolean>(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -174,11 +176,12 @@ function App() {
     [partners]
   )
 
-  // Trigger simulated AI OCR Scan
-  const triggerAiScan = (targetOrder: ClientOrder, customFileName?: string) => {
+  // Trigger sample order load
+  const triggerAiScan = (targetOrder: ClientOrder) => {
     setIsScanning(true)
-    setScanProgress(15)
-    setScanStageText('1/3 문서 레이아웃 및 표 구조 AI 비전 분석 중...')
+    setUploadedPreviewUrl(null)
+    setScanProgress(25)
+    setScanStageText('1/2 샘플 발주서 문서 구조 분석 중...')
     setManualOverrides({})
     setCustomAddedBom([])
     setDeletedPartCodes([])
@@ -186,40 +189,83 @@ function App() {
     setPoStatusMap({})
 
     setTimeout(() => {
-      setScanProgress(55)
-      setScanStageText('2/3 발주 거래처 정보·납기일·담당자 OCR 추출 중...')
-    }, 350)
-
-    setTimeout(() => {
-      const updatedOrder: ClientOrder = customFileName
-        ? {
-            ...targetOrder,
-            sourceFileName: customFileName,
-            orderNo: `SO-2026-1103-${Math.floor(10 + Math.random() * 89)}`,
-            confidenceScore: Number((98.4 + Math.random() * 1.4).toFixed(1)),
-          }
-        : targetOrder
-
-      setClientOrder(updatedOrder)
+      setClientOrder(targetOrder)
       setScanProgress(100)
       setIsScanning(false)
       setScanStageText(
-        `AI 스캔 완료 (${updatedOrder.sourceFileName}) · BOM 전개 및 발주서 자동 생성 완료`
+        `스캔 완료 (${targetOrder.sourceFileName}) · 거래처(${targetOrder.clientName}) 및 품목 추출됨`
       )
-      showToast(`"${updatedOrder.sourceFileName}" 스캔 및 BOM·발주서 생성이 완료되었습니다.`)
-    }, 850)
+      showToast(`"${targetOrder.sourceFileName}" 발주서 내용이 오른쪽 정보란에 반영되었습니다.`)
+    }, 450)
   }
 
-  const handleFileUpload = (file: File | undefined) => {
+  // Real File Upload & AI Document Parsing (Excel / PDF / Image OCR)
+  const handleFileUpload = async (file: File | undefined) => {
     if (!file) return
-    const matchedSample =
-      file.name.includes('병원') || file.name.includes('32')
-        ? SAMPLE_CLIENT_ORDERS[1].order
-        : file.name.includes('시네마') || file.name.includes('영화')
-          ? SAMPLE_CLIENT_ORDERS[2].order
-          : SAMPLE_CLIENT_ORDERS[selectedSampleIdx].order
+    setSelectedSampleIdx(-1)
+    setIsScanning(true)
+    setScanProgress(10)
+    setScanStageText(`"${file.name}" 파일 분석 시작...`)
+    setManualOverrides({})
+    setCustomAddedBom([])
+    setDeletedPartCodes([])
+    setPartEdits({})
+    setPoStatusMap({})
 
-    triggerAiScan(matchedSample, file.name)
+    try {
+      const parsed = await parseUploadedOrderDocument(file, kioskModels, (pct, msg) => {
+        setScanProgress(pct)
+        setScanStageText(msg)
+      })
+
+      setClientOrder(parsed.order)
+      setUploadedPreviewUrl(parsed.previewImageUrl || null)
+      setScanProgress(100)
+      setIsScanning(false)
+      setScanStageText(
+        `스캔 완료 (${file.name}) → 거래처: ${parsed.order.clientName} / 품목 ${parsed.order.items.length}건 추출됨`
+      )
+
+      // Automatically add extracted client to partners list if not already registered
+      setPartners((prev) => {
+        const exists = prev.some(
+          (p) =>
+            p.type === 'CLIENT' &&
+            (p.name === parsed.order.clientName || p.bizNo === parsed.order.businessNo)
+        )
+        if (exists) return prev
+        return [
+          {
+            id: `CLI-${Date.now().toString().slice(-4)}`,
+            type: 'CLIENT',
+            name: parsed.order.clientName,
+            bizNo: parsed.order.businessNo,
+            manager: parsed.order.managerName,
+            phone: parsed.order.managerPhone,
+            email: parsed.order.managerEmail,
+            address: parsed.order.deliveryAddress,
+            leadTimeDays: 10,
+          },
+          ...prev,
+        ]
+      })
+
+      showToast(
+        `"${file.name}" 스캔 성공! [${parsed.order.clientName} / ${parsed.order.items
+          .map((i) => `${i.modelCode} ${i.quantity}대`)
+          .join(', ')}] 정보가 반영되었습니다.`
+      )
+    } catch (err) {
+      console.error('Document parse error:', err)
+      setIsScanning(false)
+      setScanProgress(100)
+      setScanStageText('문서 분석 중 일부 항목을 기본값으로 대체했습니다.')
+      showToast('파일 스캔 중 오류가 발생하여 기본 양식으로 불러왔습니다.')
+    } finally {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
   }
 
   // Derived BOM & PO calculations
@@ -893,6 +939,28 @@ function App() {
                   </div>
                   <p className="text-xs sm:text-sm text-slate-600 font-medium">{scanStageText}</p>
                 </div>
+
+                {/* Uploaded Document Visual Preview (if PDF or Image uploaded) */}
+                {uploadedPreviewUrl && (
+                  <div className="p-3 rounded-xl bg-white border border-indigo-200 space-y-2 shadow-2xs">
+                    <div className="flex items-center justify-between text-xs font-bold text-indigo-700">
+                      <span>스캔된 원본 발주서 미리보기</span>
+                      <a
+                        href={uploadedPreviewUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="underline hover:text-indigo-900"
+                      >
+                        원본 크게 보기
+                      </a>
+                    </div>
+                    <img
+                      src={uploadedPreviewUrl}
+                      alt="Uploaded Order Preview"
+                      className="w-full max-h-56 object-contain rounded-lg border border-slate-200 bg-slate-50"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Right Column: Client Info CRUD & Ordered Kiosks (8 cols) */}
@@ -1033,7 +1101,7 @@ function App() {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 text-sm">
                     <div>
                       <label className="block text-slate-600 font-semibold mb-1">
-                        발주 거래처명
+                        발주 거래처명 (상호)
                       </label>
                       <input
                         type="text"
@@ -1055,6 +1123,19 @@ function App() {
                           setClientOrder({ ...clientOrder, businessNo: e.target.value })
                         }
                         className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 font-mono font-semibold focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-600 font-semibold mb-1">
+                        문서번호 (발주번호)
+                      </label>
+                      <input
+                        type="text"
+                        value={clientOrder.orderNo}
+                        onChange={(e) =>
+                          setClientOrder({ ...clientOrder, orderNo: e.target.value })
+                        }
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-indigo-700 font-mono font-bold focus:outline-none focus:border-indigo-500"
                       />
                     </div>
                     <div>
@@ -1080,6 +1161,17 @@ function App() {
                       />
                     </div>
                     <div>
+                      <label className="block text-slate-600 font-semibold mb-1">이메일</label>
+                      <input
+                        type="text"
+                        value={clientOrder.managerEmail}
+                        onChange={(e) =>
+                          setClientOrder({ ...clientOrder, managerEmail: e.target.value })
+                        }
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 font-mono focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                    <div>
                       <label className="block text-slate-600 font-semibold mb-1">발주일자</label>
                       <input
                         type="date"
@@ -1101,7 +1193,7 @@ function App() {
                         className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 font-semibold text-indigo-700 focus:outline-none focus:border-indigo-500"
                       />
                     </div>
-                    <div className="sm:col-span-3">
+                    <div>
                       <label className="block text-slate-600 font-semibold mb-1">납품 장소</label>
                       <input
                         type="text"
@@ -1158,7 +1250,21 @@ function App() {
                                 ))}
                               </select>
                             </td>
-                            <td className="py-3.5 px-4 text-slate-600 text-sm">{item.spec}</td>
+                            <td className="py-3.5 px-4">
+                              <input
+                                type="text"
+                                value={item.spec}
+                                onChange={(e) =>
+                                  setClientOrder((prev) => ({
+                                    ...prev,
+                                    items: prev.items.map((it) =>
+                                      it.id === item.id ? { ...it, spec: e.target.value } : it
+                                    ),
+                                  }))
+                                }
+                                className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-slate-700 text-sm focus:outline-none focus:border-indigo-500"
+                              />
+                            </td>
                             <td className="py-3.5 px-4">
                               <div className="flex items-center justify-center gap-1.5">
                                 <button
