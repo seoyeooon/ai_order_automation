@@ -86,7 +86,74 @@ function formatNowTimestamp(): string {
   return `${yyyy}-${mm}-${dd} ${hh}:${mi}`
 }
 
+function KioskSystemIcon({ className = 'w-10 h-10' }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 64 64"
+      fill="none"
+      className={className}
+      aria-hidden="true"
+    >
+      <defs>
+        <linearGradient id="kioskBgGrad" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#4F46E5" />
+          <stop offset="50%" stopColor="#4338CA" />
+          <stop offset="100%" stopColor="#1E1B4B" />
+        </linearGradient>
+        <linearGradient id="kioskScreenGrad" x1="18" y1="12" x2="42" y2="38" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#E0E7FF" />
+          <stop offset="100%" stopColor="#C7D2FE" />
+        </linearGradient>
+        <linearGradient id="kioskBadgeGrad" x1="35" y1="33" x2="55" y2="53" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#10B981" />
+          <stop offset="100%" stopColor="#059669" />
+        </linearGradient>
+      </defs>
+      <rect width="64" height="64" rx="16" fill="url(#kioskBgGrad)" />
+      <rect
+        x="1.5"
+        y="1.5"
+        width="61"
+        height="61"
+        rx="14.5"
+        stroke="#818CF8"
+        strokeOpacity="0.4"
+        strokeWidth="1.5"
+      />
+      {/* Kiosk Stand Body */}
+      <rect x="15" y="9" width="28" height="40" rx="4" fill="#FFFFFF" />
+      {/* Kiosk Touch Display */}
+      <rect x="18" y="12.5" width="22" height="22" rx="2.5" fill="url(#kioskScreenGrad)" />
+      {/* Order & BOM Lines on Screen */}
+      <rect x="21" y="16" width="10" height="2.2" rx="1.1" fill="#4338CA" />
+      <rect x="21" y="20.5" width="16" height="2" rx="1" fill="#6366F1" />
+      <rect x="21" y="24.5" width="13" height="2" rx="1" fill="#6366F1" />
+      <rect x="21" y="28.5" width="8" height="2.2" rx="1.1" fill="#4F46E5" />
+      {/* Card Reader & Dispenser */}
+      <rect x="20" y="38" width="10" height="2.2" rx="1.1" fill="#94A3B8" />
+      <rect x="33" y="37.5" width="4" height="3.2" rx="1" fill="#6366F1" />
+      <rect x="20" y="43" width="18" height="2" rx="1" fill="#CBD5E1" />
+      {/* Base Stand */}
+      <path
+        d="M11 49H47C48.1046 49 49 49.8954 49 51V53H9V51C9 49.8954 9.89543 49 11 49Z"
+        fill="#E0E7FF"
+      />
+      {/* Order Approval Check Badge */}
+      <circle cx="45" cy="43" r="10.5" fill="url(#kioskBadgeGrad)" stroke="#1E1B4B" strokeWidth="2.5" />
+      <path
+        d="M40.5 43.2L43.4 46.1L49.8 39.7"
+        stroke="#FFFFFF"
+        strokeWidth="2.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 function App() {
+  const [isHome, setIsHome] = useState<boolean>(true)
   const [activeTab, setActiveTab] = useState<ActiveTab>('ORDER_INTAKE')
   const [materialSubView, setMaterialSubView] = useState<'ALL' | 'BOM_ONLY' | 'PO_ONLY'>('ALL')
   const logSeqRef = useRef<number>(200)
@@ -1226,6 +1293,62 @@ function App() {
     showToast(`${modelCode} BOM에서 "${partName}" 부품이 삭제되었습니다.`)
   }
 
+  if (isHome) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-indigo-50/40 text-slate-800 flex flex-col justify-between selection:bg-indigo-600 selection:text-white relative overflow-hidden">
+        {/* Subtle decorative background accents */}
+        <div className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 w-[680px] h-[360px] bg-indigo-500/8 rounded-full blur-3xl" />
+
+        <div />
+
+        {/* Center Hero Content */}
+        <main className="relative z-10 max-w-3xl mx-auto px-6 py-16 text-center flex flex-col items-center">
+          {/* Custom Kiosk Order System Icon */}
+          <div className="mb-7 p-3 rounded-3xl bg-white shadow-xl shadow-indigo-950/5 border border-indigo-100">
+            <KioskSystemIcon className="w-20 h-20 sm:w-24 sm:h-24 drop-shadow-xs" />
+          </div>
+
+          <span className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200 mb-4">
+            무인민원발급기 · 스마트 키오스크 통합 SCM
+          </span>
+
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-slate-900 leading-tight">
+            키오스크 발주 관리 시스템
+          </h1>
+
+          <p className="mt-4 text-base sm:text-lg text-slate-500 max-w-xl leading-relaxed font-normal">
+            수주 발주서 접수부터 제품별 소요 자재(BOM) 자동 산출 및 발주처별 구매발주서 발행까지 한 곳에서 간편하게 관리하세요.
+          </p>
+
+          {/* Single Centered Start Button */}
+          <div className="mt-10">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('ORDER_INTAKE')
+                setIsHome(false)
+              }}
+              className="group inline-flex items-center gap-3 px-9 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-lg font-semibold shadow-lg shadow-indigo-600/25 hover:shadow-xl hover:shadow-indigo-600/30 transition-all cursor-pointer"
+            >
+              <span>시작하기</span>
+              <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+            </button>
+          </div>
+        </main>
+
+        {/* Bottom Creator Footer */}
+        <footer className="relative z-10 border-t border-slate-200/80 bg-white/80 backdrop-blur-xs py-5 px-4 text-center">
+          <p className="text-sm text-slate-600 font-normal">
+            <span className="text-slate-400 mr-2">제작자</span>
+            <span className="font-medium text-slate-700">
+              김동준 / 최재혁 / 김여원 / 김서연
+            </span>
+          </p>
+        </footer>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col selection:bg-indigo-600 selection:text-white">
       {/* Toast Notification */}
@@ -1239,13 +1362,18 @@ function App() {
       {/* Top Header */}
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur-md">
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-xs">
-              <Cpu className="w-5 h-5 text-white" />
+          <button
+            type="button"
+            onClick={() => setIsHome(true)}
+            title="클릭하여 홈 화면으로 이동"
+            className="group flex items-center gap-3.5 text-left cursor-pointer rounded-xl focus:outline-none"
+          >
+            <div className="shrink-0 transition-transform group-hover:scale-105">
+              <KioskSystemIcon className="w-11 h-11 drop-shadow-2xs" />
             </div>
             <div>
-              <div className="flex items-center gap-2.5">
-                <h1 className="text-lg font-bold tracking-tight text-slate-900">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-lg font-bold tracking-tight text-slate-900 group-hover:text-indigo-600 transition-colors">
                   키오스크 발주 관리 시스템
                 </h1>
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200">
@@ -1256,7 +1384,7 @@ function App() {
                 발주서 접수 후 제품별 소요 자재(BOM)를 자동 산출하고 발주처별 구매발주서를 발행합니다
               </p>
             </div>
-          </div>
+          </button>
 
           {/* Workflow Status Summary Pill */}
           <div className="flex items-center gap-3 flex-wrap">
@@ -4368,6 +4496,19 @@ function App() {
           )}
         </main>
       </div>
+
+      {/* Bottom Creator Footer */}
+      <footer className="border-t border-slate-200 bg-white py-5 px-4 text-center mt-auto">
+        <div className="max-w-[1440px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs sm:text-sm text-slate-500">
+          <span>키오스크 발주 관리 시스템</span>
+          <p className="text-slate-600">
+            <span className="text-slate-400 mr-2">제작자</span>
+            <span className="font-medium text-slate-700">
+              김동준 / 최재혁 / 김여원 / 김서연
+            </span>
+          </p>
+        </div>
+      </footer>
 
       {/* Purchase Order Preview Modal */}
       <PurchaseOrderModal
