@@ -1,6 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
 import {
-  AlertTriangle,
   ArrowRight,
   Boxes,
   Building2,
@@ -97,17 +96,12 @@ function KioskSystemIcon({ className = 'w-10 h-10' }: { className?: string }) {
     >
       <defs>
         <linearGradient id="kioskBgGrad" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#4F46E5" />
-          <stop offset="50%" stopColor="#4338CA" />
-          <stop offset="100%" stopColor="#1E1B4B" />
+          <stop offset="0%" stopColor="#0E8A5F" />
+          <stop offset="100%" stopColor="#09583C" />
         </linearGradient>
         <linearGradient id="kioskScreenGrad" x1="18" y1="12" x2="42" y2="38" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#E0E7FF" />
-          <stop offset="100%" stopColor="#C7D2FE" />
-        </linearGradient>
-        <linearGradient id="kioskBadgeGrad" x1="35" y1="33" x2="55" y2="53" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#10B981" />
-          <stop offset="100%" stopColor="#059669" />
+          <stop offset="0%" stopColor="#ECFDF5" />
+          <stop offset="100%" stopColor="#D1FAE5" />
         </linearGradient>
       </defs>
       <rect width="64" height="64" rx="16" fill="url(#kioskBgGrad)" />
@@ -117,8 +111,8 @@ function KioskSystemIcon({ className = 'w-10 h-10' }: { className?: string }) {
         width="61"
         height="61"
         rx="14.5"
-        stroke="#818CF8"
-        strokeOpacity="0.4"
+        stroke="#6EE7B7"
+        strokeOpacity="0.35"
         strokeWidth="1.5"
       />
       {/* Kiosk Stand Body */}
@@ -126,24 +120,24 @@ function KioskSystemIcon({ className = 'w-10 h-10' }: { className?: string }) {
       {/* Kiosk Touch Display */}
       <rect x="18" y="12.5" width="22" height="22" rx="2.5" fill="url(#kioskScreenGrad)" />
       {/* Order & BOM Lines on Screen */}
-      <rect x="21" y="16" width="10" height="2.2" rx="1.1" fill="#4338CA" />
-      <rect x="21" y="20.5" width="16" height="2" rx="1" fill="#6366F1" />
-      <rect x="21" y="24.5" width="13" height="2" rx="1" fill="#6366F1" />
-      <rect x="21" y="28.5" width="8" height="2.2" rx="1.1" fill="#4F46E5" />
+      <rect x="21" y="16" width="10" height="2.2" rx="1.1" fill="#065F46" />
+      <rect x="21" y="20.5" width="16" height="2" rx="1" fill="#0E8A5F" />
+      <rect x="21" y="24.5" width="13" height="2" rx="1" fill="#0E8A5F" />
+      <rect x="21" y="28.5" width="8" height="2.2" rx="1.1" fill="#047857" />
       {/* Card Reader & Dispenser */}
       <rect x="20" y="38" width="10" height="2.2" rx="1.1" fill="#94A3B8" />
-      <rect x="33" y="37.5" width="4" height="3.2" rx="1" fill="#6366F1" />
+      <rect x="33" y="37.5" width="4" height="3.2" rx="1" fill="#0E8A5F" />
       <rect x="20" y="43" width="18" height="2" rx="1" fill="#CBD5E1" />
       {/* Base Stand */}
       <path
         d="M11 49H47C48.1046 49 49 49.8954 49 51V53H9V51C9 49.8954 9.89543 49 11 49Z"
-        fill="#E0E7FF"
+        fill="#D1FAE5"
       />
       {/* Order Approval Check Badge */}
-      <circle cx="45" cy="43" r="10.5" fill="url(#kioskBadgeGrad)" stroke="#1E1B4B" strokeWidth="2.5" />
+      <circle cx="45" cy="43" r="10.5" fill="#0F2E26" stroke="#FFFFFF" strokeWidth="2.5" />
       <path
         d="M40.5 43.2L43.4 46.1L49.8 39.7"
-        stroke="#FFFFFF"
+        stroke="#34D399"
         strokeWidth="2.6"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -453,11 +447,6 @@ function App() {
     [clientOrder, expandedBom, poStatusMap]
   )
 
-  const totalKioskCount = useMemo(
-    () => clientOrder.items.reduce((sum, item) => sum + item.quantity, 0),
-    [clientOrder.items]
-  )
-
   // Unified Warehouse Inventory Derivation (100% synced with STEP 2 BOM & STEP 5 Master)
   const warehouseInventory = useMemo(() => {
     const map = new Map<
@@ -522,14 +511,6 @@ function App() {
 
     return Array.from(map.values())
   }, [kioskModels, customAddedBom, customInventoryParts, expandedBom, partEdits, safetyStockMap])
-
-  const inventoryStats = useMemo(() => {
-    const total = warehouseInventory.length
-    const normal = warehouseInventory.filter((p) => p.stockStatus === 'NORMAL').length
-    const low = warehouseInventory.filter((p) => p.stockStatus === 'LOW').length
-    const empty = warehouseInventory.filter((p) => p.stockStatus === 'EMPTY').length
-    return { total, normal, low, empty, alertCount: low + empty }
-  }, [warehouseInventory])
 
   const filteredWarehouseInventory = useMemo(() => {
     return warehouseInventory.filter((item) => {
@@ -804,21 +785,29 @@ function App() {
           modelCode: defaultModel.modelCode,
           modelName: defaultModel.modelName,
           spec: defaultModel.spec,
-          quantity: 5,
+          quantity: 1,
         },
       ],
     }))
   }
 
   const handleRemoveOrderItem = (itemId: string) => {
-    if (clientOrder.items.length <= 1) {
-      showToast('최소 1개 이상의 수주 품목이 필요합니다.')
-      return
-    }
     setClientOrder((prev) => ({
       ...prev,
       items: prev.items.filter((it) => it.id !== itemId),
     }))
+  }
+
+  const handleResetClientOrder = () => {
+    setClientOrder(DEFAULT_CLIENT_ORDER)
+    setUploadedPreviewUrl(null)
+    setManualOverrides({})
+    setCustomAddedBom([])
+    setDeletedPartCodes([])
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+    showToast('발주서 접수 입력 내용이 모두 초기화되었습니다.')
   }
 
   // Step 2 BOM Item CRUD Handlers
@@ -1295,40 +1284,150 @@ function App() {
 
   if (isHome) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-indigo-50/40 text-slate-800 flex flex-col justify-between selection:bg-indigo-600 selection:text-white relative overflow-hidden">
-        {/* Subtle decorative background accents */}
-        <div className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 w-[680px] h-[360px] bg-indigo-500/8 rounded-full blur-3xl" />
-
-        <div />
-
-        {/* Center Hero Content */}
-        <main className="relative z-10 max-w-3xl mx-auto px-6 py-16 text-center flex flex-col items-center">
-          {/* Custom Kiosk Order System Icon */}
-          <div className="mb-7 p-3 rounded-3xl bg-white shadow-xl shadow-indigo-950/5 border border-indigo-100">
-            <KioskSystemIcon className="w-20 h-20 sm:w-24 sm:h-24 drop-shadow-xs" />
+      <div className="min-h-screen bg-white text-[#0F2E26] flex flex-col justify-between selection:bg-[#0E8A5F] selection:text-white overflow-x-hidden">
+        {/* Top Minimal White Bar */}
+        <header className="w-full max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <KioskSystemIcon className="w-9 h-9" />
+            <span className="text-base font-bold tracking-tight text-[#0F2E26]">
+              키오스크 발주 관리 시스템
+            </span>
           </div>
-
-          <span className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200 mb-4">
-            무인민원발급기 · 스마트 키오스크 통합 SCM
-          </span>
-
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-slate-900 leading-tight">
-            키오스크 발주 관리 시스템
-          </h1>
-
-          <p className="mt-4 text-base sm:text-lg text-slate-500 max-w-xl leading-relaxed font-normal">
-            수주 발주서 접수부터 제품별 소요 자재(BOM) 자동 산출 및 발주처별 구매발주서 발행까지 한 곳에서 간편하게 관리하세요.
-          </p>
-
-          {/* Single Centered Start Button */}
-          <div className="mt-10">
+          <nav className="hidden sm:flex items-center gap-7 text-sm font-medium text-slate-600">
             <button
               type="button"
               onClick={() => {
                 setActiveTab('ORDER_INTAKE')
                 setIsHome(false)
               }}
-              className="group inline-flex items-center gap-3 px-9 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-lg font-semibold shadow-lg shadow-indigo-600/25 hover:shadow-xl hover:shadow-indigo-600/30 transition-all cursor-pointer"
+              className="hover:text-[#0E8A5F] transition-colors cursor-pointer"
+            >
+              발주서 접수
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('MATERIAL_ORDER')
+                setIsHome(false)
+              }}
+              className="hover:text-[#0E8A5F] transition-colors cursor-pointer"
+            >
+              자재 발주
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('MANAGE_BOM')
+                setIsHome(false)
+              }}
+              className="hover:text-[#0E8A5F] transition-colors cursor-pointer"
+            >
+              제품 · BOM 관리
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('MANAGE_INVENTORY')
+                setIsHome(false)
+              }}
+              className="hover:text-[#0E8A5F] transition-colors cursor-pointer"
+            >
+              재고 관리
+            </button>
+          </nav>
+        </header>
+
+        {/* Center White Hero Section */}
+        <main className="flex-1 flex flex-col items-center justify-center max-w-4xl mx-auto px-6 py-12 text-center">
+          {/* Minimalist Editorial Line-Art Illustration with Green Accents */}
+          <div className="mb-6">
+            <svg
+              width="220"
+              height="96"
+              viewBox="0 0 220 96"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              className="mx-auto"
+              aria-hidden="true"
+            >
+              {/* Left: Order Document */}
+              <rect
+                x="18"
+                y="18"
+                width="46"
+                height="58"
+                rx="4"
+                fill="#FFFFFF"
+                stroke="#0F2E26"
+                strokeWidth="2"
+              />
+              <rect x="26" y="28" width="22" height="5" rx="2" fill="#0E8A5F" />
+              <line x1="26" y1="41" x2="54" y2="41" stroke="#0F2E26" strokeWidth="1.8" strokeLinecap="round" />
+              <line x1="26" y1="49" x2="50" y2="49" stroke="#0F2E26" strokeWidth="1.8" strokeLinecap="round" />
+              <line x1="26" y1="57" x2="44" y2="57" stroke="#0F2E26" strokeWidth="1.8" strokeLinecap="round" />
+
+              {/* Continuous Organic Connection Line (User Interviews style) */}
+              <path
+                d="M64 48 C 92 48, 88 20, 110 28 C 130 35, 114 70, 136 62 C 146 58, 150 48, 156 48"
+                stroke="#0F2E26"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                fill="none"
+              />
+              <circle cx="110" cy="28" r="4" fill="#0E8A5F" />
+
+              {/* Right: Smart Kiosk Stand */}
+              <rect
+                x="156"
+                y="12"
+                width="44"
+                height="64"
+                rx="5"
+                fill="#FFFFFF"
+                stroke="#0F2E26"
+                strokeWidth="2"
+              />
+              <rect
+                x="162"
+                y="18"
+                width="32"
+                height="30"
+                rx="2.5"
+                fill="#D1FAE5"
+                stroke="#0F2E26"
+                strokeWidth="1.6"
+              />
+              <path
+                d="M172 33L176.5 37.5L185 29"
+                stroke="#0E8A5F"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <rect x="165" y="54" width="14" height="3" rx="1.5" fill="#0F2E26" />
+              <rect x="183" y="53" width="8" height="5" rx="1.5" fill="#0E8A5F" />
+              <path d="M148 76H208" stroke="#0F2E26" strokeWidth="2.4" strokeLinecap="round" />
+            </svg>
+          </div>
+
+          {/* Large Editorial Title */}
+          <h1 className="text-4xl sm:text-5xl md:text-[56px] font-bold tracking-tight text-[#0F2E26] leading-[1.18]">
+            키오스크 발주 관리 시스템
+          </h1>
+
+          <p className="mt-4 text-base sm:text-lg text-slate-600 max-w-xl leading-relaxed font-normal">
+            거래처 수주 발주서 접수부터 제품별 소요 자재(BOM) 자동 산출 및 발주처별 구매발주서 발행까지 한 곳에서 간편하게 처리하세요.
+          </p>
+
+          {/* Single Centered Green Start Button Below Title */}
+          <div className="mt-9">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('ORDER_INTAKE')
+                setIsHome(false)
+              }}
+              className="group inline-flex items-center gap-2.5 px-9 py-4 rounded-lg bg-[#0E8A5F] hover:bg-[#0B704D] text-white text-base sm:text-lg font-semibold shadow-sm transition-all cursor-pointer"
             >
               <span>시작하기</span>
               <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
@@ -1336,24 +1435,59 @@ function App() {
           </div>
         </main>
 
-        {/* Bottom Creator Footer */}
-        <footer className="relative z-10 border-t border-slate-200/80 bg-white/80 backdrop-blur-xs py-5 px-4 text-center">
-          <p className="text-sm text-slate-600 font-normal">
-            <span className="text-slate-400 mr-2">제작자</span>
-            <span className="font-medium text-slate-700">
-              김동준 / 최재혁 / 김여원 / 김서연
-            </span>
-          </p>
-        </footer>
+        {/* Bottom Organic Forest Green Wave Band (Inspired by Reference Design) */}
+        <div className="w-full mt-8">
+          {/* Curved Wave Top Edge */}
+          <svg
+            viewBox="0 0 1440 54"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-full h-8 sm:h-12 block -mb-px"
+            preserveAspectRatio="none"
+          >
+            <path
+              d="M0 32C320 6 620 0 920 14C1160 25 1330 40 1440 24V54H0V32Z"
+              fill="#0E8A5F"
+            />
+          </svg>
+
+          <footer className="bg-[#0E8A5F] text-white pt-8 pb-10 px-6">
+            <div className="max-w-5xl mx-auto flex flex-col items-center text-center space-y-7">
+              <div className="text-[11px] tracking-[0.2em] uppercase text-emerald-100/90 font-medium">
+                SMART KIOSK MODELS &amp; AUTOMATED BOM WORKFLOW
+              </div>
+
+              {/* Clean White Typographic Marks inside the Green Band */}
+              <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-3 text-base sm:text-lg font-semibold tracking-tight text-white/95">
+                <span>TAPI-9270J</span>
+                <span>TAPI-9270T</span>
+                <span>TAPI-9320J</span>
+                <span>TAPI-9320T</span>
+                <span>BOM 자동 산출</span>
+                <span>구매발주서 발행</span>
+              </div>
+
+              {/* Divider & Creator Credits */}
+              <div className="w-full pt-6 border-t border-white/15 flex items-center justify-center">
+                <p className="text-sm sm:text-base text-white/95 tracking-wide font-normal">
+                  <span className="text-white/60">|</span>
+                  <span className="mx-2.5 font-medium">AI아이</span>
+                  <span className="text-white/60 mr-3">|</span>
+                  <span>김동준 · 최재혁 · 김여원 · 김서연</span>
+                </p>
+              </div>
+            </div>
+          </footer>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col selection:bg-indigo-600 selection:text-white">
+    <div className="min-h-screen bg-[#F8FAF9] text-slate-800 flex flex-col selection:bg-[#0E8A5F] selection:text-white">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-slate-900 text-white text-sm font-medium shadow-2xl border border-slate-700">
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-xl bg-[#0F2E26] text-white text-sm font-medium shadow-xl border border-emerald-800">
           <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
           <span>{toastMessage}</span>
         </div>
@@ -1369,14 +1503,14 @@ function App() {
             className="group flex items-center gap-3.5 text-left cursor-pointer rounded-xl focus:outline-none"
           >
             <div className="shrink-0 transition-transform group-hover:scale-105">
-              <KioskSystemIcon className="w-11 h-11 drop-shadow-2xs" />
+              <KioskSystemIcon className="w-10 h-10" />
             </div>
             <div>
               <div className="flex items-center gap-2.5 flex-wrap">
-                <h1 className="text-lg font-bold tracking-tight text-slate-900 group-hover:text-indigo-600 transition-colors">
+                <h1 className="text-lg font-bold tracking-tight text-[#0F2E26] group-hover:text-[#0E8A5F] transition-colors">
                   키오스크 발주 관리 시스템
                 </h1>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-[#0E8A5F] border border-emerald-200">
                   무인민원발급기 · 스마트 키오스크
                 </span>
               </div>
@@ -1386,32 +1520,28 @@ function App() {
             </div>
           </button>
 
-          {/* Workflow Status Summary Pill */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 border border-slate-200 text-xs sm:text-sm">
-              <Building2 className="w-4 h-4 text-indigo-600 shrink-0" />
-              <span className="text-slate-500">접수 거래처:</span>
-              <span className="font-semibold text-slate-900">{clientOrder.clientName}</span>
-              <span className="text-slate-300">|</span>
-              <span className="text-indigo-600 font-semibold">
-                키오스크 {clientOrder.items.length}종 ({totalKioskCount}대)
-              </span>
-            </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsHome(true)}
+              className="px-3.5 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-medium transition-colors cursor-pointer"
+            >
+              홈 화면으로
+            </button>
           </div>
         </div>
       </header>
 
       {/* Main Body with Left Sidebar Navigation + Right Content Area */}
       <div className="flex-1 max-w-[1440px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col lg:flex-row gap-6 items-start">
-        {/* Left Sidebar Navigation */}
-        <aside className="w-full lg:w-64 shrink-0 lg:sticky lg:top-24 space-y-5">
+        {/* Left Sidebar Navigation (Only Menu Titles, No Fixed Numbers Below) */}
+        <aside className="w-full lg:w-60 shrink-0 lg:sticky lg:top-24 space-y-4">
           {/* Primary Workflow Group: 발주서 접수 -> 자재 발주 */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-2xs space-y-2">
+          <div className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-2xs space-y-1.5">
             <div className="px-2.5 py-1 flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                발주 업무 플로우
+                발주 업무
               </span>
-              <span className="text-[11px] text-indigo-600 font-medium">접수 → 자재 발주</span>
             </div>
 
             <button
@@ -1419,30 +1549,17 @@ function App() {
               onClick={() => setActiveTab('ORDER_INTAKE')}
               className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-left transition-all cursor-pointer border ${
                 activeTab === 'ORDER_INTAKE'
-                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                  ? 'bg-[#0E8A5F] text-white border-[#0E8A5F] shadow-2xs'
                   : 'bg-white hover:bg-slate-50 text-slate-700 border-transparent'
               }`}
             >
               <div className="flex items-center gap-3 min-w-0">
-                <div
-                  className={`p-2 rounded-lg shrink-0 ${
-                    activeTab === 'ORDER_INTAKE'
-                      ? 'bg-white/15 text-white'
-                      : 'bg-indigo-50 text-indigo-600'
+                <FileCheck2
+                  className={`w-4 h-4 shrink-0 ${
+                    activeTab === 'ORDER_INTAKE' ? 'text-white' : 'text-[#0E8A5F]'
                   }`}
-                >
-                  <FileCheck2 className="w-4 h-4" />
-                </div>
-                <div className="truncate">
-                  <div className="text-sm font-semibold truncate">발주서 접수</div>
-                  <div
-                    className={`text-xs truncate ${
-                      activeTab === 'ORDER_INTAKE' ? 'text-indigo-100' : 'text-slate-500'
-                    }`}
-                  >
-                    주문 키오스크 {totalKioskCount}대
-                  </div>
-                </div>
+                />
+                <span className="text-sm font-semibold truncate">발주서 접수</span>
               </div>
               <ArrowRight
                 className={`w-4 h-4 shrink-0 ${
@@ -1451,41 +1568,22 @@ function App() {
               />
             </button>
 
-            {/* Visual Connector Line */}
-            <div className="flex items-center gap-2 pl-7 py-0.5">
-              <div className="w-0.5 h-3.5 bg-indigo-200 rounded-full" />
-              <span className="text-[11px] text-slate-400">BOM 자동 산출 연동</span>
-            </div>
-
             <button
               type="button"
               onClick={() => setActiveTab('MATERIAL_ORDER')}
               className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-left transition-all cursor-pointer border ${
                 activeTab === 'MATERIAL_ORDER'
-                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                  ? 'bg-[#0E8A5F] text-white border-[#0E8A5F] shadow-2xs'
                   : 'bg-white hover:bg-slate-50 text-slate-700 border-transparent'
               }`}
             >
               <div className="flex items-center gap-3 min-w-0">
-                <div
-                  className={`p-2 rounded-lg shrink-0 ${
-                    activeTab === 'MATERIAL_ORDER'
-                      ? 'bg-white/15 text-white'
-                      : 'bg-emerald-50 text-emerald-600'
+                <Send
+                  className={`w-4 h-4 shrink-0 ${
+                    activeTab === 'MATERIAL_ORDER' ? 'text-white' : 'text-[#0E8A5F]'
                   }`}
-                >
-                  <Send className="w-4 h-4" />
-                </div>
-                <div className="truncate">
-                  <div className="text-sm font-semibold truncate">자재 발주</div>
-                  <div
-                    className={`text-xs truncate ${
-                      activeTab === 'MATERIAL_ORDER' ? 'text-indigo-100' : 'text-slate-500'
-                    }`}
-                  >
-                    부품 {expandedBom.length}종 · 발주서 {purchaseOrders.length}건
-                  </div>
-                </div>
+                />
+                <span className="text-sm font-semibold truncate">자재 발주</span>
               </div>
               <ArrowRight
                 className={`w-4 h-4 shrink-0 ${
@@ -1501,118 +1599,71 @@ function App() {
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                 관리 메뉴
               </span>
-              <span className="text-[11px] text-slate-400">기준 정보</span>
             </div>
 
             <button
               type="button"
               onClick={() => setActiveTab('MANAGE_BOM')}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-left transition-all cursor-pointer ${
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left transition-all cursor-pointer ${
                 activeTab === 'MANAGE_BOM'
-                  ? 'bg-slate-900 text-white'
+                  ? 'bg-[#0F2E26] text-white'
                   : 'hover:bg-slate-50 text-slate-700'
               }`}
             >
-              <div className="flex items-center gap-3 min-w-0">
-                <Layers
-                  className={`w-4 h-4 shrink-0 ${
-                    activeTab === 'MANAGE_BOM' ? 'text-violet-300' : 'text-violet-600'
-                  }`}
-                />
-                <div className="truncate">
-                  <div className="text-sm font-medium truncate">제품 · BOM 관리</div>
-                  <div
-                    className={`text-xs truncate ${
-                      activeTab === 'MANAGE_BOM' ? 'text-slate-300' : 'text-slate-400'
-                    }`}
-                  >
-                    키오스크 {kioskModels.length}종 · 대당 소요량
-                  </div>
-                </div>
-              </div>
+              <Layers
+                className={`w-4 h-4 shrink-0 ${
+                  activeTab === 'MANAGE_BOM' ? 'text-emerald-300' : 'text-[#0E8A5F]'
+                }`}
+              />
+              <span className="text-sm font-medium truncate">제품 · BOM 관리</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab('MANAGE_INVENTORY')}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-left transition-all cursor-pointer ${
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left transition-all cursor-pointer ${
                 activeTab === 'MANAGE_INVENTORY'
-                  ? 'bg-slate-900 text-white'
+                  ? 'bg-[#0F2E26] text-white'
                   : 'hover:bg-slate-50 text-slate-700'
               }`}
             >
-              <div className="flex items-center gap-3 min-w-0">
-                <Package
-                  className={`w-4 h-4 shrink-0 ${
-                    activeTab === 'MANAGE_INVENTORY' ? 'text-amber-300' : 'text-amber-600'
-                  }`}
-                />
-                <div className="truncate">
-                  <div className="text-sm font-medium truncate flex items-center gap-1.5">
-                    <span>재고 관리</span>
-                    {inventoryStats.alertCount > 0 && (
-                      <span
-                        className={`px-1.5 py-0.2 rounded-full text-[11px] font-medium ${
-                          activeTab === 'MANAGE_INVENTORY'
-                            ? 'bg-amber-400 text-slate-950'
-                            : 'bg-amber-100 text-amber-800'
-                        }`}
-                      >
-                        부족 {inventoryStats.alertCount}
-                      </span>
-                    )}
-                  </div>
-                  <div
-                    className={`text-xs truncate ${
-                      activeTab === 'MANAGE_INVENTORY' ? 'text-slate-300' : 'text-slate-400'
-                    }`}
-                  >
-                    부품 {inventoryStats.total}종 · 창고 입출고
-                  </div>
-                </div>
-              </div>
+              <Package
+                className={`w-4 h-4 shrink-0 ${
+                  activeTab === 'MANAGE_INVENTORY' ? 'text-emerald-300' : 'text-[#0E8A5F]'
+                }`}
+              />
+              <span className="text-sm font-medium truncate">재고 관리</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab('MANAGE_PARTNERS')}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-left transition-all cursor-pointer ${
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left transition-all cursor-pointer ${
                 activeTab === 'MANAGE_PARTNERS'
-                  ? 'bg-slate-900 text-white'
+                  ? 'bg-[#0F2E26] text-white'
                   : 'hover:bg-slate-50 text-slate-700'
               }`}
             >
-              <div className="flex items-center gap-3 min-w-0">
-                <Building2
-                  className={`w-4 h-4 shrink-0 ${
-                    activeTab === 'MANAGE_PARTNERS' ? 'text-indigo-300' : 'text-indigo-600'
-                  }`}
-                />
-                <div className="truncate">
-                  <div className="text-sm font-medium truncate">거래처 관리</div>
-                  <div
-                    className={`text-xs truncate ${
-                      activeTab === 'MANAGE_PARTNERS' ? 'text-slate-300' : 'text-slate-400'
-                    }`}
-                  >
-                    고객사 {clientPartners.length}곳 · 공급처 {supplierPartners.length}곳
-                  </div>
-                </div>
-              </div>
+              <Building2
+                className={`w-4 h-4 shrink-0 ${
+                  activeTab === 'MANAGE_PARTNERS' ? 'text-emerald-300' : 'text-[#0E8A5F]'
+                }`}
+              />
+              <span className="text-sm font-medium truncate">거래처 관리</span>
             </button>
           </div>
 
           {/* Beginner Quick Guide Box */}
-          <div className="bg-indigo-50/60 border border-indigo-100 rounded-2xl p-4 space-y-2 text-xs text-slate-600 leading-relaxed">
-            <div className="font-semibold text-indigo-950 flex items-center gap-1.5">
-              <ClipboardList className="w-4 h-4 text-indigo-600" />
+          <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 space-y-2 text-xs text-slate-600 leading-relaxed">
+            <div className="font-semibold text-[#0F2E26] flex items-center gap-1.5">
+              <ClipboardList className="w-4 h-4 text-[#0E8A5F]" />
               이용 안내
             </div>
             <p>
-              1. <span className="font-medium text-slate-800">발주서 접수</span>에서 거래처 발주서 파일을 올리거나 주문 키오스크 모델·수량을 확인합니다.
+              1. <span className="font-medium text-slate-800">발주서 접수</span>에서 발주서 파일을 업로드하거나 주문 키오스크 모델·수량을 입력합니다.
             </p>
             <p>
-              2. <span className="font-medium text-slate-800">자재 발주</span>로 이동하면 모델별 BOM 부품 소요량이 자동 계산되며, 공급처별 발주서(PDF·엑셀)를 바로 발행할 수 있습니다.
+              2. <span className="font-medium text-slate-800">자재 발주</span>로 이동하면 모델별 BOM 부품 소요량이 자동 계산되며, 공급처별 발주서(PDF·엑셀)를 발행할 수 있습니다.
             </p>
           </div>
         </aside>
@@ -1623,399 +1674,440 @@ function App() {
               1. 발주서 접수 (ORDER_INTAKE)
           ===================================================================== */}
           {activeTab === 'ORDER_INTAKE' && (
-            <section className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs space-y-6 p-6">
-              {/* Section Header */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-5">
+            <section className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs space-y-5 p-6">
+              {/* Section Header with Reset & Proceed Buttons */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900">발주서 접수</h2>
+                  <h2 className="text-xl font-bold text-[#0F2E26]">발주서 접수</h2>
                   <p className="text-sm text-slate-500 mt-1">
-                    거래처에서 받은 수주 발주서 파일(엑셀·PDF·이미지)을 업로드하거나, 주문 키오스크 모델 및 수량을 입력해 접수하세요.
+                    수주 발주서 파일을 업로드해 자동 입력하거나, 아래 거래처 정보 및 주문 품목을 직접 입력하세요.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('MATERIAL_ORDER')}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-xs transition-all cursor-pointer shrink-0"
-                >
-                  <span>자재 발주 진행하기</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleResetClientOrder}
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors cursor-pointer"
+                  >
+                    <RefreshCw className="w-4 h-4 text-slate-500" />
+                    <span>초기화</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('MATERIAL_ORDER')}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-[#0E8A5F] hover:bg-[#0B704D] text-white shadow-2xs transition-all cursor-pointer"
+                  >
+                    <span>자재 발주 진행하기</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                {/* Left Column: Simple File Upload Dropzone (4 cols) */}
-                <div className="lg:col-span-4 flex flex-col justify-between space-y-4">
-                  <div
-                    onDragOver={(e) => {
-                      e.preventDefault()
-                      setIsDragging(true)
-                    }}
-                    onDragLeave={() => setIsDragging(false)}
-                    onDrop={(e) => {
-                      e.preventDefault()
-                      setIsDragging(false)
-                      const file = e.dataTransfer.files?.[0]
-                      handleFileUpload(file)
-                    }}
-                    onClick={() => fileInputRef.current?.click()}
-                    className={`flex-1 flex flex-col items-center justify-center p-7 rounded-2xl border-2 border-dashed transition-all cursor-pointer text-center min-h-[260px] ${
-                      isDragging
-                        ? 'border-indigo-500 bg-indigo-50/70'
-                        : 'border-slate-300 hover:border-indigo-400 bg-slate-50/60 hover:bg-indigo-50/20'
-                    }`}
-                  >
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".pdf,.png,.jpg,.jpeg,.xlsx,.xls,.csv"
-                      className="hidden"
-                      onChange={(e) => handleFileUpload(e.target.files?.[0])}
-                    />
-                    <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 mb-4">
-                      {isScanning ? (
-                        <RefreshCw className="w-7 h-7 animate-spin" />
-                      ) : (
-                        <UploadCloud className="w-7 h-7" />
+              {/* Compact Horizontal File Upload Bar (Space-Efficient!) */}
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault()
+                  setIsDragging(true)
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  setIsDragging(false)
+                  const file = e.dataTransfer.files?.[0]
+                  handleFileUpload(file)
+                }}
+                className={`p-3.5 sm:px-5 rounded-xl border-2 border-dashed transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                  isDragging
+                    ? 'border-[#0E8A5F] bg-emerald-50/70'
+                    : 'border-slate-300 hover:border-[#0E8A5F] bg-slate-50/70'
+                }`}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.png,.jpg,.jpeg,.xlsx,.xls,.csv"
+                  className="hidden"
+                  onChange={(e) => handleFileUpload(e.target.files?.[0])}
+                />
+
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-3.5 cursor-pointer flex-1 min-w-0"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#0E8A5F] shrink-0">
+                    {isScanning ? (
+                      <RefreshCw className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <UploadCloud className="w-5 h-5" />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-slate-900 flex items-center gap-2 flex-wrap">
+                      <span>
+                        {isScanning
+                          ? '발주서 파일 내용을 분석 중입니다...'
+                          : '발주서 파일 업로드 (클릭 또는 드래그)'}
+                      </span>
+                      {clientOrder.sourceFileName && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-emerald-100 text-[#0F2E26] text-xs font-medium">
+                          <FileCheck2 className="w-3.5 h-3.5 text-[#0E8A5F]" />
+                          {clientOrder.sourceFileName}
+                        </span>
                       )}
                     </div>
-                    <p className="text-base font-semibold text-slate-900">
-                      {isScanning
-                        ? '발주서 파일 내용을 읽어오는 중입니다...'
-                        : '발주서 파일 업로드 (클릭 또는 드래그)'}
+                    <p className="text-xs text-slate-500 truncate mt-0.5">
+                      지원 형식: PDF, Excel(XLSX/CSV), 이미지(JPG/PNG) — 업로드 시 아래 입력란에 자동 반영됩니다.
                     </p>
-                    <p className="text-xs sm:text-sm text-slate-500 mt-1.5 leading-relaxed">
-                      PDF, Excel(XLSX/CSV), 이미지(JPG/PNG) 파일을 올리면 우측 거래처 정보와 주문 내역에 자동 반영됩니다.
-                    </p>
-
-                    <div className="mt-5 w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 flex items-center gap-2 text-xs sm:text-sm text-slate-700">
-                      <FileCheck2 className="w-4 h-4 text-indigo-600 shrink-0" />
-                      <span className="truncate font-medium">{clientOrder.sourceFileName}</span>
-                    </div>
                   </div>
-
-                  {/* Uploaded Document Visual Preview (if PDF or Image uploaded) */}
-                  {uploadedPreviewUrl && (
-                    <div className="p-3 rounded-xl bg-white border border-slate-200 space-y-2">
-                      <div className="flex items-center justify-between text-xs font-medium text-slate-700">
-                        <span>첨부된 발주서 미리보기</span>
-                        <a
-                          href={uploadedPreviewUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-indigo-600 underline hover:text-indigo-800"
-                        >
-                          크게 보기
-                        </a>
-                      </div>
-                      <img
-                        src={uploadedPreviewUrl}
-                        alt="Uploaded Order Preview"
-                        className="w-full max-h-56 object-contain rounded-lg border border-slate-200 bg-slate-50"
-                      />
-                    </div>
-                  )}
                 </div>
 
-                {/* Right Column: Client Info & Ordered Kiosks (8 cols) */}
-                <div className="lg:col-span-8 space-y-6">
-                  {/* Client Info Box */}
-                  <div className="p-5 rounded-2xl bg-slate-50/70 border border-slate-200 space-y-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2">
-                        <Building2 className="w-5 h-5 text-indigo-600" />
-                        수주 거래처(고객사) 정보
+                <div className="flex items-center gap-2 shrink-0">
+                  {uploadedPreviewUrl && (
+                    <a
+                      href={uploadedPreviewUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-3 py-1.5 rounded-lg bg-white border border-slate-300 text-xs font-medium text-[#0E8A5F] hover:bg-emerald-50"
+                    >
+                      원본 미리보기
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-3.5 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-semibold cursor-pointer"
+                  >
+                    파일 선택
+                  </button>
+                </div>
+              </div>
+
+              {/* Full-Width Client Info & Ordered Kiosks */}
+              <div className="space-y-5">
+                {/* Client Info Box */}
+                <div className="p-5 rounded-2xl bg-slate-50/70 border border-slate-200 space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="text-base font-semibold text-[#0F2E26] flex items-center gap-2">
+                      <Building2 className="w-5 h-5 text-[#0E8A5F]" />
+                      수주 거래처(고객사) 정보
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddClientForm((v) => !v)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 transition-colors cursor-pointer"
+                    >
+                      <UserPlus className="w-3.5 h-3.5 text-[#0E8A5F]" />
+                      {showAddClientForm ? '닫기' : '+ 신규 고객사 등록'}
+                    </button>
+                  </div>
+
+                  {/* Saved Client Partners Quick Chips */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs text-slate-500">등록 고객사 선택:</span>
+                    {clientPartners.map((partner) => {
+                      const isSelected =
+                        Boolean(clientOrder.clientName) && clientOrder.clientName === partner.name
+                      return (
+                        <div
+                          key={partner.id}
+                          className={`inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 rounded-lg text-xs font-medium border transition-all ${
+                            isSelected
+                              ? 'bg-emerald-50 text-[#0E8A5F] border-emerald-400'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => handleSelectClientPartner(partner)}
+                            className="cursor-pointer"
+                          >
+                            {partner.name}
+                          </button>
+                          <button
+                            type="button"
+                            title="거래처 삭제"
+                            onClick={() => handleDeleteClientPartner(partner.id, partner.name)}
+                            className="p-0.5 rounded hover:bg-rose-100 text-slate-400 hover:text-rose-600 cursor-pointer"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* Optional Quick Add New Client Form */}
+                  {showAddClientForm && (
+                    <div className="p-4 rounded-xl bg-emerald-50/60 border border-emerald-200 space-y-3">
+                      <div className="text-sm font-semibold text-[#0F2E26]">
+                        신규 고객사 빠른 등록
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                        <input
+                          type="text"
+                          placeholder="거래처명 (필수)"
+                          value={newClientForm.name}
+                          onChange={(e) =>
+                            setNewClientForm({ ...newClientForm, name: e.target.value })
+                          }
+                          className="px-3 py-2 rounded-lg bg-white border border-emerald-200 text-slate-900"
+                        />
+                        <input
+                          type="text"
+                          placeholder="사업자번호 (예: 123-45-67890)"
+                          value={newClientForm.bizNo}
+                          onChange={(e) =>
+                            setNewClientForm({ ...newClientForm, bizNo: e.target.value })
+                          }
+                          className="px-3 py-2 rounded-lg bg-white border border-emerald-200 text-slate-900"
+                        />
+                        <input
+                          type="text"
+                          placeholder="담당자명 / 직책"
+                          value={newClientForm.manager}
+                          onChange={(e) =>
+                            setNewClientForm({ ...newClientForm, manager: e.target.value })
+                          }
+                          className="px-3 py-2 rounded-lg bg-white border border-emerald-200 text-slate-900"
+                        />
+                        <input
+                          type="text"
+                          placeholder="연락처 (예: 02-1234-5678)"
+                          value={newClientForm.phone}
+                          onChange={(e) =>
+                            setNewClientForm({ ...newClientForm, phone: e.target.value })
+                          }
+                          className="px-3 py-2 rounded-lg bg-white border border-emerald-200 text-slate-900"
+                        />
+                        <input
+                          type="email"
+                          placeholder="이메일"
+                          value={newClientForm.email}
+                          onChange={(e) =>
+                            setNewClientForm({ ...newClientForm, email: e.target.value })
+                          }
+                          className="px-3 py-2 rounded-lg bg-white border border-emerald-200 text-slate-900"
+                        />
+                        <input
+                          type="text"
+                          placeholder="기본 납품 주소"
+                          value={newClientForm.address}
+                          onChange={(e) =>
+                            setNewClientForm({ ...newClientForm, address: e.target.value })
+                          }
+                          className="px-3 py-2 rounded-lg bg-white border border-emerald-200 text-slate-900"
+                        />
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowAddClientForm(false)}
+                          className="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-white text-slate-600 border border-slate-300 cursor-pointer"
+                        >
+                          취소
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleAddClientPartnerInStep1}
+                          className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-[#0E8A5F] text-white cursor-pointer"
+                        >
+                          저장 후 적용
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Editable Client Info Inputs (Blank until file uploaded or manually entered) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 text-sm">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">
+                        발주 거래처명 (상호)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="발주서 업로드 또는 직접 입력"
+                        value={clientOrder.clientName}
+                        onChange={(e) =>
+                          setClientOrder({ ...clientOrder, clientName: e.target.value })
+                        }
+                        className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 font-medium focus:outline-none focus:border-[#0E8A5F]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">
+                        사업자등록번호
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="000-00-00000"
+                        value={clientOrder.businessNo}
+                        onChange={(e) =>
+                          setClientOrder({ ...clientOrder, businessNo: e.target.value })
+                        }
+                        className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 font-mono focus:outline-none focus:border-[#0E8A5F]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">
+                        문서번호 (발주번호)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="PO-YYYYMMDD-000"
+                        value={clientOrder.orderNo}
+                        onChange={(e) =>
+                          setClientOrder({ ...clientOrder, orderNo: e.target.value })
+                        }
+                        className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-[#0E8A5F] font-mono font-medium focus:outline-none focus:border-[#0E8A5F]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">
+                        담당자명
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="담당자 성명 / 직책"
+                        value={clientOrder.managerName}
+                        onChange={(e) =>
+                          setClientOrder({ ...clientOrder, managerName: e.target.value })
+                        }
+                        className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-[#0E8A5F]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">
+                        연락처
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="02-0000-0000"
+                        value={clientOrder.managerPhone}
+                        onChange={(e) =>
+                          setClientOrder({ ...clientOrder, managerPhone: e.target.value })
+                        }
+                        className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-[#0E8A5F]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">
+                        이메일
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="example@company.co.kr"
+                        value={clientOrder.managerEmail}
+                        onChange={(e) =>
+                          setClientOrder({ ...clientOrder, managerEmail: e.target.value })
+                        }
+                        className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 font-mono focus:outline-none focus:border-[#0E8A5F]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">
+                        발주일자
+                      </label>
+                      <input
+                        type="date"
+                        value={clientOrder.orderDate}
+                        onChange={(e) =>
+                          setClientOrder({ ...clientOrder, orderDate: e.target.value })
+                        }
+                        className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-[#0E8A5F]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">
+                        납기요청일
+                      </label>
+                      <input
+                        type="date"
+                        value={clientOrder.deliveryDate}
+                        onChange={(e) =>
+                          setClientOrder({ ...clientOrder, deliveryDate: e.target.value })
+                        }
+                        className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-[#0E8A5F] font-medium focus:outline-none focus:border-[#0E8A5F]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">
+                        납품 장소
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="납품 주소지 입력"
+                        value={clientOrder.deliveryAddress}
+                        onChange={(e) =>
+                          setClientOrder({ ...clientOrder, deliveryAddress: e.target.value })
+                        }
+                        className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-[#0E8A5F]"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Ordered Kiosk Products Table */}
+                <div className="p-5 rounded-2xl bg-slate-50/70 border border-slate-200 space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <h3 className="text-base font-semibold text-[#0F2E26] flex items-center gap-2">
+                        <ClipboardList className="w-5 h-5 text-[#0E8A5F]" />
+                        주문 키오스크 제품 및 수량
                       </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        선택한 키오스크 모델의 표준 BOM 구성에 따라 자재 발주 수량이 자동 계산됩니다.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => setShowAddClientForm((v) => !v)}
+                        onClick={() => setActiveTab('MANAGE_BOM')}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 transition-colors cursor-pointer"
                       >
-                        <UserPlus className="w-3.5 h-3.5 text-indigo-600" />
-                        {showAddClientForm ? '닫기' : '+ 신규 고객사 등록'}
+                        <Layers className="w-3.5 h-3.5 text-[#0E8A5F]" />
+                        제품 · BOM 관리
                       </button>
-                    </div>
-
-                    {/* Saved Client Partners Quick Chips */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs text-slate-500">등록 고객사 빠른 선택:</span>
-                      {clientPartners.map((partner) => {
-                        const isSelected = clientOrder.clientName === partner.name
-                        return (
-                          <div
-                            key={partner.id}
-                            className={`inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 rounded-lg text-xs font-medium border transition-all ${
-                              isSelected
-                                ? 'bg-indigo-50 text-indigo-700 border-indigo-300'
-                                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                            }`}
-                          >
-                            <button
-                              type="button"
-                              onClick={() => handleSelectClientPartner(partner)}
-                              className="cursor-pointer"
-                            >
-                              {partner.name}
-                            </button>
-                            <button
-                              type="button"
-                              title="거래처 삭제"
-                              onClick={() => handleDeleteClientPartner(partner.id, partner.name)}
-                              className="p-0.5 rounded hover:bg-rose-100 text-slate-400 hover:text-rose-600 cursor-pointer"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </div>
-                        )
-                      })}
-                    </div>
-
-                    {/* Optional Quick Add New Client Form */}
-                    {showAddClientForm && (
-                      <div className="p-4 rounded-xl bg-indigo-50/60 border border-indigo-200 space-y-3">
-                        <div className="text-sm font-semibold text-indigo-950">
-                          신규 고객사 빠른 등록
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-                          <input
-                            type="text"
-                            placeholder="거래처명 (필수)"
-                            value={newClientForm.name}
-                            onChange={(e) =>
-                              setNewClientForm({ ...newClientForm, name: e.target.value })
-                            }
-                            className="px-3 py-2 rounded-lg bg-white border border-indigo-200 text-slate-900"
-                          />
-                          <input
-                            type="text"
-                            placeholder="사업자번호 (예: 123-45-67890)"
-                            value={newClientForm.bizNo}
-                            onChange={(e) =>
-                              setNewClientForm({ ...newClientForm, bizNo: e.target.value })
-                            }
-                            className="px-3 py-2 rounded-lg bg-white border border-indigo-200 text-slate-900"
-                          />
-                          <input
-                            type="text"
-                            placeholder="담당자명 / 직책"
-                            value={newClientForm.manager}
-                            onChange={(e) =>
-                              setNewClientForm({ ...newClientForm, manager: e.target.value })
-                            }
-                            className="px-3 py-2 rounded-lg bg-white border border-indigo-200 text-slate-900"
-                          />
-                          <input
-                            type="text"
-                            placeholder="연락처 (예: 02-1234-5678)"
-                            value={newClientForm.phone}
-                            onChange={(e) =>
-                              setNewClientForm({ ...newClientForm, phone: e.target.value })
-                            }
-                            className="px-3 py-2 rounded-lg bg-white border border-indigo-200 text-slate-900"
-                          />
-                          <input
-                            type="email"
-                            placeholder="이메일"
-                            value={newClientForm.email}
-                            onChange={(e) =>
-                              setNewClientForm({ ...newClientForm, email: e.target.value })
-                            }
-                            className="px-3 py-2 rounded-lg bg-white border border-indigo-200 text-slate-900"
-                          />
-                          <input
-                            type="text"
-                            placeholder="기본 납품 주소"
-                            value={newClientForm.address}
-                            onChange={(e) =>
-                              setNewClientForm({ ...newClientForm, address: e.target.value })
-                            }
-                            className="px-3 py-2 rounded-lg bg-white border border-indigo-200 text-slate-900"
-                          />
-                        </div>
-                        <div className="flex justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setShowAddClientForm(false)}
-                            className="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-white text-slate-600 border border-slate-300 cursor-pointer"
-                          >
-                            취소
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleAddClientPartnerInStep1}
-                            className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white cursor-pointer"
-                          >
-                            저장 후 적용
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Editable Client Info Inputs */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 text-sm">
-                      <div>
-                        <label className="block text-xs font-medium text-slate-600 mb-1">
-                          발주 거래처명 (상호)
-                        </label>
-                        <input
-                          type="text"
-                          value={clientOrder.clientName}
-                          onChange={(e) =>
-                            setClientOrder({ ...clientOrder, clientName: e.target.value })
-                          }
-                          className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 font-medium focus:outline-none focus:border-indigo-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-slate-600 mb-1">
-                          사업자등록번호
-                        </label>
-                        <input
-                          type="text"
-                          value={clientOrder.businessNo}
-                          onChange={(e) =>
-                            setClientOrder({ ...clientOrder, businessNo: e.target.value })
-                          }
-                          className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 font-mono focus:outline-none focus:border-indigo-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-slate-600 mb-1">
-                          문서번호 (발주번호)
-                        </label>
-                        <input
-                          type="text"
-                          value={clientOrder.orderNo}
-                          onChange={(e) =>
-                            setClientOrder({ ...clientOrder, orderNo: e.target.value })
-                          }
-                          className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-indigo-700 font-mono font-medium focus:outline-none focus:border-indigo-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-slate-600 mb-1">
-                          담당자명
-                        </label>
-                        <input
-                          type="text"
-                          value={clientOrder.managerName}
-                          onChange={(e) =>
-                            setClientOrder({ ...clientOrder, managerName: e.target.value })
-                          }
-                          className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-indigo-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-slate-600 mb-1">
-                          연락처
-                        </label>
-                        <input
-                          type="text"
-                          value={clientOrder.managerPhone}
-                          onChange={(e) =>
-                            setClientOrder({ ...clientOrder, managerPhone: e.target.value })
-                          }
-                          className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-indigo-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-slate-600 mb-1">
-                          이메일
-                        </label>
-                        <input
-                          type="text"
-                          value={clientOrder.managerEmail}
-                          onChange={(e) =>
-                            setClientOrder({ ...clientOrder, managerEmail: e.target.value })
-                          }
-                          className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 font-mono focus:outline-none focus:border-indigo-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-slate-600 mb-1">
-                          발주일자
-                        </label>
-                        <input
-                          type="date"
-                          value={clientOrder.orderDate}
-                          onChange={(e) =>
-                            setClientOrder({ ...clientOrder, orderDate: e.target.value })
-                          }
-                          className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-indigo-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-slate-600 mb-1">
-                          납기요청일
-                        </label>
-                        <input
-                          type="date"
-                          value={clientOrder.deliveryDate}
-                          onChange={(e) =>
-                            setClientOrder({ ...clientOrder, deliveryDate: e.target.value })
-                          }
-                          className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-indigo-700 font-medium focus:outline-none focus:border-indigo-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-slate-600 mb-1">
-                          납품 장소
-                        </label>
-                        <input
-                          type="text"
-                          value={clientOrder.deliveryAddress}
-                          onChange={(e) =>
-                            setClientOrder({ ...clientOrder, deliveryAddress: e.target.value })
-                          }
-                          className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-indigo-500"
-                        />
-                      </div>
+                      <button
+                        type="button"
+                        onClick={handleAddOrderItem}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-[#0E8A5F] hover:bg-[#0B704D] text-white transition-colors cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        주문 품목 추가
+                      </button>
                     </div>
                   </div>
 
-                  {/* Ordered Kiosk Products Table */}
-                  <div className="p-5 rounded-2xl bg-slate-50/70 border border-slate-200 space-y-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div>
-                        <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2">
-                          <ClipboardList className="w-5 h-5 text-indigo-600" />
-                          주문 키오스크 제품 및 수량
-                        </h3>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          선택한 키오스크 모델의 표준 BOM 구성에 따라 자재 발주 수량이 자동 계산됩니다.
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setActiveTab('MANAGE_BOM')}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 transition-colors cursor-pointer"
-                        >
-                          <Layers className="w-3.5 h-3.5 text-violet-600" />
-                          제품 · BOM 관리
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleAddOrderItem}
-                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors cursor-pointer"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          주문 품목 추가
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="overflow-x-auto bg-white rounded-xl border border-slate-200">
-                      <table className="w-full text-left border-collapse text-sm">
-                        <thead>
-                          <tr className="bg-slate-100/80 border-b border-slate-200 text-slate-600">
-                            <th className="py-3 px-4 font-medium">키오스크 모델 선택</th>
-                            <th className="py-3 px-4 font-medium">규격 및 사양</th>
-                            <th className="py-3 px-4 text-center font-medium w-44">주문 수량</th>
-                            <th className="py-3 px-3 text-center font-medium w-16">삭제</th>
+                  <div className="overflow-x-auto bg-white rounded-xl border border-slate-200">
+                    <table className="w-full text-left border-collapse text-sm">
+                      <thead>
+                        <tr className="bg-slate-100/80 border-b border-slate-200 text-slate-600">
+                          <th className="py-3 px-4 font-medium">키오스크 모델 선택</th>
+                          <th className="py-3 px-4 font-medium">규격 및 사양</th>
+                          <th className="py-3 px-4 text-center font-medium w-44">주문 수량</th>
+                          <th className="py-3 px-3 text-center font-medium w-16">삭제</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {clientOrder.items.length === 0 ? (
+                          <tr>
+                            <td colSpan={4} className="py-10 px-4 text-center text-slate-400">
+                              <div className="flex flex-col items-center gap-2">
+                                <p className="text-sm text-slate-500">
+                                  접수된 주문 키오스크 품목이 없습니다.
+                                </p>
+                                <p className="text-xs text-slate-400">
+                                  상단에 발주서 파일을 업로드하거나 우측 상단의{' '}
+                                  <span className="text-[#0E8A5F] font-medium">
+                                    [+ 주문 품목 추가]
+                                  </span>{' '}
+                                  버튼을 눌러 품목을 추가해 주세요.
+                                </p>
+                              </div>
+                            </td>
                           </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-200">
-                          {clientOrder.items.map((item) => {
+                        ) : (
+                          clientOrder.items.map((item) => {
                             const matchedModel = kioskModels.find(
                               (m) => m.modelCode === item.modelCode
                             )
@@ -2026,7 +2118,7 @@ function App() {
                                   <select
                                     value={item.modelCode}
                                     onChange={(e) => handleModelChange(item.id, e.target.value)}
-                                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 font-medium text-sm focus:outline-none focus:border-indigo-500"
+                                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 font-medium text-sm focus:outline-none focus:border-[#0E8A5F]"
                                   >
                                     {kioskModels.map((m) => {
                                       const st =
@@ -2037,14 +2129,14 @@ function App() {
                                             : ''
                                       return (
                                         <option key={m.modelCode} value={m.modelCode}>
-                                          {st}[{m.modelCode}] {m.modelName} (BOM {m.bom.length}종)
+                                          {st}[{m.modelCode}] {m.modelName}
                                         </option>
                                       )
                                     })}
                                   </select>
                                   <div className="flex items-center gap-2 mt-1.5">
                                     {modelStatus === 'NEW' && (
-                                      <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                      <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-50 text-[#0E8A5F] border border-emerald-200">
                                         신제품
                                       </span>
                                     )}
@@ -2060,9 +2152,9 @@ function App() {
                                           setSelectedMasterModelCode(matchedModel.modelCode)
                                           setActiveTab('MANAGE_BOM')
                                         }}
-                                        className="text-xs font-medium text-indigo-600 hover:underline cursor-pointer"
+                                        className="text-xs font-medium text-[#0E8A5F] hover:underline cursor-pointer"
                                       >
-                                        구성 부품(BOM {matchedModel.bom.length}종) 상세 보기 →
+                                        구성 부품(BOM) 상세 보기 →
                                       </button>
                                     )}
                                   </div>
@@ -2079,14 +2171,16 @@ function App() {
                                         ),
                                       }))
                                     }
-                                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-slate-700 text-sm focus:outline-none focus:border-indigo-500"
+                                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-slate-700 text-sm focus:outline-none focus:border-[#0E8A5F]"
                                   />
                                 </td>
                                 <td className="py-3.5 px-4">
                                   <div className="flex items-center justify-center gap-1.5">
                                     <button
                                       type="button"
-                                      onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
+                                      onClick={() =>
+                                        handleQuantityChange(item.id, item.quantity - 1)
+                                      }
                                       className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium cursor-pointer border border-slate-300 text-base"
                                     >
                                       -
@@ -2102,7 +2196,9 @@ function App() {
                                     />
                                     <button
                                       type="button"
-                                      onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
+                                      onClick={() =>
+                                        handleQuantityChange(item.id, item.quantity + 1)
+                                      }
                                       className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium cursor-pointer border border-slate-300 text-base"
                                     >
                                       +
@@ -2121,25 +2217,22 @@ function App() {
                                 </td>
                               </tr>
                             )
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
+                          })
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>
 
               {/* Bottom CTA to Material Order */}
-              <div className="pt-4 border-t border-slate-200 flex items-center justify-between flex-wrap gap-3">
-                <span className="text-xs sm:text-sm text-slate-500">
-                  접수된 키오스크 총 <strong className="font-semibold text-slate-800">{totalKioskCount}대</strong>에 필요한 부품 소요량({expandedBom.length}종)과 발주처별 발주서({purchaseOrders.length}건)가 준비되었습니다.
-                </span>
+              <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setActiveTab('MATERIAL_ORDER')}
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm sm:text-base font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm transition-all cursor-pointer"
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm sm:text-base font-semibold bg-[#0E8A5F] hover:bg-[#0B704D] text-white shadow-sm transition-all cursor-pointer"
                 >
-                  <span>자재 발주 화면으로 이동 ({purchaseOrders.length}개 공급처 발주서 발행)</span>
+                  <span>자재 발주 화면으로 이동</span>
                   <ArrowRight className="w-5 h-5" />
                 </button>
               </div>
@@ -2154,27 +2247,19 @@ function App() {
               {/* Top Control Bar: Order Context + Sub-view Switcher */}
               <section className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div>
-                  <div className="flex items-center gap-2.5 flex-wrap">
-                    <h2 className="text-xl font-bold text-slate-900">자재 발주</h2>
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200">
-                      수주처: {clientOrder.clientName} ({totalKioskCount}대)
-                    </span>
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      소요 자재 {expandedBom.length}종 · 발주처 {purchaseOrders.length}곳
-                    </span>
-                  </div>
+                  <h2 className="text-xl font-bold text-[#0F2E26]">자재 발주</h2>
                   <p className="text-sm text-slate-500 mt-1">
                     접수된 키오스크 수량에 맞춰 산출된 자재 내역을 확인·조정하고, 공급처별 구매발주서(PDF·엑셀·인쇄·전송)를 바로 발행하세요.
                   </p>
                 </div>
 
-                {/* Quick View Mode Toggle */}
+                {/* Quick View Mode Toggle (No Fixed Numbers) */}
                 <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200 shrink-0">
                   {(
                     [
                       { key: 'ALL', label: '전체 한눈에 보기' },
-                      { key: 'BOM_ONLY', label: `소요 자재 내역 (${expandedBom.length}종)` },
-                      { key: 'PO_ONLY', label: `발주처별 발주서 (${purchaseOrders.length}건)` },
+                      { key: 'BOM_ONLY', label: '소요 자재 내역' },
+                      { key: 'PO_ONLY', label: '발주처별 발주서' },
                     ] as const
                   ).map((v) => (
                     <button
@@ -2183,7 +2268,7 @@ function App() {
                       onClick={() => setMaterialSubView(v.key)}
                       className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all cursor-pointer ${
                         materialSubView === v.key
-                          ? 'bg-white text-slate-900 shadow-2xs'
+                          ? 'bg-white text-[#0F2E26] shadow-2xs'
                           : 'text-slate-600 hover:text-slate-900'
                       }`}
                     >
@@ -2439,198 +2524,220 @@ function App() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200">
-                        {filteredBom.map((part) => {
-                          const isEditing = editingPartCode === part.partCode
-                          return (
-                            <tr key={part.partCode} className="hover:bg-slate-50/90 transition-colors">
-                              <td className="py-3.5 px-4 whitespace-nowrap align-middle">
-                                <div className="font-mono font-medium text-indigo-600 text-xs sm:text-sm">
-                                  {part.partCode}
-                                </div>
-                                <span className="inline-block mt-1 px-2 py-0.5 rounded text-xs font-normal bg-slate-100 text-slate-600 whitespace-nowrap">
-                                  {part.category}
-                                </span>
-                              </td>
-
-                              <td className="py-3.5 px-4 align-middle break-keep">
-                                {isEditing ? (
-                                  <div className="space-y-1.5">
-                                    <input
-                                      type="text"
-                                      value={part.partName}
-                                      onChange={(e) =>
-                                        handleUpdateBomField(part.partCode, 'partName', e.target.value)
-                                      }
-                                      className="w-full px-2.5 py-1 rounded-lg bg-white border border-indigo-400 font-medium text-slate-900"
-                                    />
-                                    <input
-                                      type="text"
-                                      value={part.spec}
-                                      onChange={(e) =>
-                                        handleUpdateBomField(part.partCode, 'spec', e.target.value)
-                                      }
-                                      className="w-full px-2.5 py-1 rounded-lg bg-white border border-slate-300 text-xs text-slate-700"
-                                    />
+                        {filteredBom.length === 0 ? (
+                          <tr>
+                            <td colSpan={8} className="py-12 px-4 text-center text-slate-400">
+                              <div className="flex flex-col items-center gap-2.5">
+                                <p className="text-sm text-slate-600">
+                                  산출된 소요 자재 내역이 없습니다.
+                                </p>
+                                <p className="text-xs text-slate-400">
+                                  먼저 <span className="font-medium text-slate-700">발주서 접수</span> 화면에서 발주서 파일을 업로드하거나 주문 키오스크 품목을 입력해 주세요.
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveTab('ORDER_INTAKE')}
+                                  className="mt-1 px-4 py-2 rounded-lg bg-[#0E8A5F] hover:bg-[#0B704D] text-white text-xs font-semibold cursor-pointer"
+                                >
+                                  발주서 접수 화면으로 이동
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredBom.map((part) => {
+                            const isEditing = editingPartCode === part.partCode
+                            return (
+                              <tr key={part.partCode} className="hover:bg-slate-50/90 transition-colors">
+                                <td className="py-3.5 px-4 whitespace-nowrap align-middle">
+                                  <div className="font-mono font-medium text-[#0E8A5F] text-xs sm:text-sm">
+                                    {part.partCode}
                                   </div>
-                                ) : (
-                                  <>
-                                    <div className="font-medium text-slate-900 text-sm sm:text-base break-keep">
-                                      {part.partName}
-                                    </div>
-                                    <div className="text-xs text-slate-500 mt-0.5 break-keep">
-                                      {part.spec}
-                                    </div>
-                                  </>
-                                )}
-                              </td>
+                                  <span className="inline-block mt-1 px-2 py-0.5 rounded text-xs font-normal bg-slate-100 text-slate-600 whitespace-nowrap">
+                                    {part.category}
+                                  </span>
+                                </td>
 
-                              <td className="py-3.5 px-4 align-middle">
-                                <div className="flex flex-wrap gap-1.5">
-                                  {part.sourceModels.map((m) => (
-                                    <button
-                                      key={m.modelCode}
-                                      type="button"
-                                      title="클릭하여 해당 모델의 BOM 관리 화면으로 이동"
-                                      onClick={() => {
-                                        if (m.modelCode !== '수동추가') {
-                                          setSelectedMasterModelCode(m.modelCode)
-                                          setActiveTab('MANAGE_BOM')
+                                <td className="py-3.5 px-4 align-middle break-keep">
+                                  {isEditing ? (
+                                    <div className="space-y-1.5">
+                                      <input
+                                        type="text"
+                                        value={part.partName}
+                                        onChange={(e) =>
+                                          handleUpdateBomField(part.partCode, 'partName', e.target.value)
                                         }
-                                      }}
-                                      className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 border border-slate-200 font-normal text-xs whitespace-nowrap transition-colors cursor-pointer"
-                                    >
-                                      {m.modelCode}: {m.orderQty}대 × {m.qtyPerUnit ?? 1}
-                                      {part.unit} = <span className="font-medium">{m.subTotalQty}{part.unit}</span>
-                                    </button>
-                                  ))}
-                                </div>
-                              </td>
-
-                              <td className="py-3.5 px-4 text-right font-mono font-medium text-slate-800 text-sm sm:text-base whitespace-nowrap align-middle">
-                                {isEditing ? (
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    value={part.grossRequiredQty}
-                                    onChange={(e) =>
-                                      handleUpdateBomField(
-                                        part.partCode,
-                                        'grossRequiredQty',
-                                        Math.max(0, Number(e.target.value) || 0)
-                                      )
-                                    }
-                                    className="w-20 text-right px-2 py-1 rounded-lg bg-white border border-indigo-400 font-medium"
-                                  />
-                                ) : (
-                                  <span>
-                                    {part.grossRequiredQty.toLocaleString()}{' '}
-                                    <span className="text-xs font-normal text-slate-500">{part.unit}</span>
-                                  </span>
-                                )}
-                              </td>
-
-                              <td className="py-3.5 px-4 text-right font-mono text-sm whitespace-nowrap align-middle">
-                                {isEditing ? (
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    value={part.stockQty}
-                                    onChange={(e) =>
-                                      handleUpdateBomField(
-                                        part.partCode,
-                                        'stockQty',
-                                        Math.max(0, Number(e.target.value) || 0)
-                                      )
-                                    }
-                                    className="w-16 text-right px-2 py-1 rounded-lg bg-white border border-emerald-400 font-medium"
-                                  />
-                                ) : (
-                                  <span className="inline-flex items-center justify-end gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200/80 text-emerald-700 font-medium whitespace-nowrap">
-                                    <span>{deductStock ? `-${part.stockQty}` : part.stockQty}</span>
-                                    <span className="text-xs font-normal">{part.unit}</span>
-                                  </span>
-                                )}
-                              </td>
-
-                              <td className="py-3.5 px-4 whitespace-nowrap align-middle">
-                                <div className="flex items-center justify-center gap-1.5">
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    value={part.adjustedOrderQty}
-                                    onChange={(e) =>
-                                      setManualOverrides((prev) => ({
-                                        ...prev,
-                                        [part.partCode]: Math.max(0, Number(e.target.value) || 0),
-                                      }))
-                                    }
-                                    className="w-20 text-center py-1.5 rounded-xl bg-indigo-50/70 border border-indigo-300 text-indigo-950 font-semibold text-base focus:outline-none focus:border-indigo-600"
-                                  />
-                                  <span className="text-slate-500 text-xs whitespace-nowrap">
-                                    {part.unit}
-                                  </span>
-                                </div>
-                              </td>
-
-                              <td className="py-3.5 px-4 align-middle whitespace-nowrap">
-                                {isEditing ? (
-                                  <select
-                                    value={part.supplierId}
-                                    onChange={(e) =>
-                                      handleUpdateBomField(part.partCode, 'supplierId', e.target.value)
-                                    }
-                                    className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-indigo-400 font-medium text-slate-900 text-sm"
-                                  >
-                                    {supplierPartners.map((s) => (
-                                      <option key={s.id} value={s.id}>
-                                        {s.name}
-                                      </option>
-                                    ))}
-                                  </select>
-                                ) : (
-                                  <>
-                                    <div className="font-medium text-slate-900">{part.supplierName}</div>
-                                    <div className="text-xs text-slate-500 mt-0.5">
-                                      {part.supplierManager} ({part.supplierPhone}) · 납기{' '}
-                                      {part.leadTimeDays}일
+                                        className="w-full px-2.5 py-1 rounded-lg bg-white border border-emerald-500 font-medium text-slate-900"
+                                      />
+                                      <input
+                                        type="text"
+                                        value={part.spec}
+                                        onChange={(e) =>
+                                          handleUpdateBomField(part.partCode, 'spec', e.target.value)
+                                        }
+                                        className="w-full px-2.5 py-1 rounded-lg bg-white border border-slate-300 text-xs text-slate-700"
+                                      />
                                     </div>
-                                  </>
-                                )}
-                              </td>
+                                  ) : (
+                                    <>
+                                      <div className="font-medium text-slate-900 text-sm sm:text-base break-keep">
+                                        {part.partName}
+                                      </div>
+                                      <div className="text-xs text-slate-500 mt-0.5 break-keep">
+                                        {part.spec}
+                                      </div>
+                                    </>
+                                  )}
+                                </td>
 
-                              <td className="py-3.5 px-3 text-center whitespace-nowrap align-middle">
-                                <div className="flex items-center justify-center gap-1">
-                                  <button
-                                    type="button"
-                                    title={isEditing ? '수정 완료' : '부품 정보 수정'}
-                                    onClick={() =>
-                                      setEditingPartCode(isEditing ? null : part.partCode)
-                                    }
-                                    className={`p-2 rounded-lg transition-colors cursor-pointer ${
-                                      isEditing
-                                        ? 'bg-emerald-600 text-white'
-                                        : 'hover:bg-slate-100 text-slate-500 hover:text-indigo-600'
-                                    }`}
-                                  >
-                                    {isEditing ? (
-                                      <Check className="w-4 h-4" />
-                                    ) : (
-                                      <Pencil className="w-4 h-4" />
-                                    )}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    title="항목 삭제"
-                                    onClick={() => handleDeleteBomItem(part.partCode, part.partName)}
-                                    className="p-2 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          )
-                        })}
+                                <td className="py-3.5 px-4 align-middle">
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {part.sourceModels.map((m) => (
+                                      <button
+                                        key={m.modelCode}
+                                        type="button"
+                                        title="클릭하여 해당 모델의 BOM 관리 화면으로 이동"
+                                        onClick={() => {
+                                          if (m.modelCode !== '수동추가') {
+                                            setSelectedMasterModelCode(m.modelCode)
+                                            setActiveTab('MANAGE_BOM')
+                                          }
+                                        }}
+                                        className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-[#0E8A5F] border border-slate-200 font-normal text-xs whitespace-nowrap transition-colors cursor-pointer"
+                                      >
+                                        {m.modelCode}: {m.orderQty}대 × {m.qtyPerUnit ?? 1}
+                                        {part.unit} = <span className="font-medium">{m.subTotalQty}{part.unit}</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </td>
+
+                                <td className="py-3.5 px-4 text-right font-mono font-medium text-slate-800 text-sm sm:text-base whitespace-nowrap align-middle">
+                                  {isEditing ? (
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      value={part.grossRequiredQty}
+                                      onChange={(e) =>
+                                        handleUpdateBomField(
+                                          part.partCode,
+                                          'grossRequiredQty',
+                                          Math.max(0, Number(e.target.value) || 0)
+                                        )
+                                      }
+                                      className="w-20 text-right px-2 py-1 rounded-lg bg-white border border-emerald-500 font-medium"
+                                    />
+                                  ) : (
+                                    <span>
+                                      {part.grossRequiredQty.toLocaleString()}{' '}
+                                      <span className="text-xs font-normal text-slate-500">{part.unit}</span>
+                                    </span>
+                                  )}
+                                </td>
+
+                                <td className="py-3.5 px-4 text-right font-mono text-sm whitespace-nowrap align-middle">
+                                  {isEditing ? (
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      value={part.stockQty}
+                                      onChange={(e) =>
+                                        handleUpdateBomField(
+                                          part.partCode,
+                                          'stockQty',
+                                          Math.max(0, Number(e.target.value) || 0)
+                                        )
+                                      }
+                                      className="w-16 text-right px-2 py-1 rounded-lg bg-white border border-emerald-400 font-medium"
+                                    />
+                                  ) : (
+                                    <span className="inline-flex items-center justify-end gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200/80 text-emerald-700 font-medium whitespace-nowrap">
+                                      <span>{deductStock ? `-${part.stockQty}` : part.stockQty}</span>
+                                      <span className="text-xs font-normal">{part.unit}</span>
+                                    </span>
+                                  )}
+                                </td>
+
+                                <td className="py-3.5 px-4 whitespace-nowrap align-middle">
+                                  <div className="flex items-center justify-center gap-1.5">
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      value={part.adjustedOrderQty}
+                                      onChange={(e) =>
+                                        setManualOverrides((prev) => ({
+                                          ...prev,
+                                          [part.partCode]: Math.max(0, Number(e.target.value) || 0),
+                                        }))
+                                      }
+                                      className="w-20 text-center py-1.5 rounded-xl bg-emerald-50/70 border border-emerald-300 text-[#0F2E26] font-semibold text-base focus:outline-none focus:border-[#0E8A5F]"
+                                    />
+                                    <span className="text-slate-500 text-xs whitespace-nowrap">
+                                      {part.unit}
+                                    </span>
+                                  </div>
+                                </td>
+
+                                <td className="py-3.5 px-4 align-middle whitespace-nowrap">
+                                  {isEditing ? (
+                                    <select
+                                      value={part.supplierId}
+                                      onChange={(e) =>
+                                        handleUpdateBomField(part.partCode, 'supplierId', e.target.value)
+                                      }
+                                      className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-emerald-500 font-medium text-slate-900 text-sm"
+                                    >
+                                      {supplierPartners.map((s) => (
+                                        <option key={s.id} value={s.id}>
+                                          {s.name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  ) : (
+                                    <>
+                                      <div className="font-medium text-slate-900">{part.supplierName}</div>
+                                      <div className="text-xs text-slate-500 mt-0.5">
+                                        {part.supplierManager} ({part.supplierPhone}) · 납기{' '}
+                                        {part.leadTimeDays}일
+                                      </div>
+                                    </>
+                                  )}
+                                </td>
+
+                                <td className="py-3.5 px-3 text-center whitespace-nowrap align-middle">
+                                  <div className="flex items-center justify-center gap-1">
+                                    <button
+                                      type="button"
+                                      title={isEditing ? '수정 완료' : '부품 정보 수정'}
+                                      onClick={() =>
+                                        setEditingPartCode(isEditing ? null : part.partCode)
+                                      }
+                                      className={`p-2 rounded-lg transition-colors cursor-pointer ${
+                                        isEditing
+                                          ? 'bg-emerald-600 text-white'
+                                          : 'hover:bg-slate-100 text-slate-500 hover:text-[#0E8A5F]'
+                                      }`}
+                                    >
+                                      {isEditing ? (
+                                        <Check className="w-4 h-4" />
+                                      ) : (
+                                        <Pencil className="w-4 h-4" />
+                                      )}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      title="항목 삭제"
+                                      onClick={() => handleDeleteBomItem(part.partCode, part.partName)}
+                                      className="p-2 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            )
+                          })
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -2640,16 +2747,14 @@ function App() {
               {/* Part B: 발주처별 매입 발주서(PO) 발행 및 전송 */}
               {(materialSubView === 'ALL' || materialSubView === 'PO_ONLY') && (
                 <section className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs space-y-6 p-6">
+                  {/* Header */}
                   <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-200 pb-4">
                     <div>
                       <div className="flex items-center gap-2.5">
-                        <FileText className="w-5 h-5 text-emerald-600" />
+                        <FileText className="w-5 h-5 text-[#0E8A5F]" />
                         <h3 className="text-base sm:text-lg font-semibold text-slate-900">
                           발주처별 구매발주서(PO) 발행 및 전송
                         </h3>
-                        <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium">
-                          총 {purchaseOrders.length}개 공급처
-                        </span>
                       </div>
                       <p className="text-xs sm:text-sm text-slate-500 mt-1">
                         위 소요 자재 수량에 따라 공급업체별로 자동 분류된 발주서입니다. 양식 보기, PDF/엑셀 저장, 인쇄 및 이메일 발송을 지원합니다.
@@ -2660,7 +2765,7 @@ function App() {
                       <button
                         type="button"
                         onClick={handleDownloadAllExcel}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-medium bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-all cursor-pointer"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-medium bg-emerald-50 hover:bg-emerald-100 text-[#0E8A5F] border border-emerald-200 transition-all cursor-pointer"
                       >
                         <FileSpreadsheet className="w-4 h-4" />
                         전체 엑셀(.xlsx) 일괄 저장
@@ -2668,178 +2773,194 @@ function App() {
                       <button
                         type="button"
                         onClick={handleSendAllPdfEmails}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-2xs transition-all cursor-pointer"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-[#0E8A5F] hover:bg-[#0B704D] text-white shadow-2xs transition-all cursor-pointer"
                       >
                         <Send className="w-4 h-4" />
-                        전체 공급처로 PDF 발주서 일괄 전송 ({purchaseOrders.length}곳)
+                        전체 공급처로 PDF 발주서 일괄 전송
                       </button>
                     </div>
                   </div>
 
                   {/* Generated PO Cards Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    {purchaseOrders.map((po) => (
-                      <div
-                        key={po.poNumber}
-                        className="flex flex-col justify-between rounded-2xl bg-white border border-slate-200 hover:border-indigo-300 transition-all overflow-hidden shadow-2xs"
-                      >
-                        <div className="h-1 w-full bg-indigo-600" />
+                  {purchaseOrders.length === 0 ? (
+                    <div className="py-12 px-4 text-center rounded-xl border border-dashed border-slate-200 text-slate-400">
+                      <p className="text-sm text-slate-600">발행할 구매발주서가 없습니다.</p>
+                      <p className="text-xs text-slate-400 mt-1">
+                        발주서 접수 화면에서 주문 키오스크를 입력하면 공급처별 구매발주서가 자동 생성됩니다.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      {purchaseOrders.map((po) => (
+                        <div
+                          key={po.poNumber}
+                          className="flex flex-col justify-between rounded-2xl bg-white border border-slate-200 hover:border-emerald-300 transition-all overflow-hidden shadow-2xs"
+                        >
+                          <div className="h-1 w-full bg-[#0E8A5F]" />
 
-                        <div className="p-5 space-y-4 flex-1">
-                          {/* Card Header */}
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 shrink-0">
-                                <FileText className="w-5 h-5" />
-                              </div>
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-2 text-xs text-slate-500">
-                                  <span className="font-mono font-medium text-indigo-600">
-                                    {po.poNumber}
-                                  </span>
-                                  <span>|</span>
-                                  <span>납기요청: {po.requestedDeliveryDate}</span>
+                          <div className="p-5 space-y-4 flex-1">
+                            {/* Card Header */}
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="p-2.5 rounded-xl bg-emerald-50 text-[#0E8A5F] border border-emerald-100 shrink-0">
+                                  <FileText className="w-5 h-5" />
                                 </div>
-                                <h4 className="text-base font-semibold text-slate-900 truncate mt-0.5">
-                                  {po.supplierName} 귀하
-                                </h4>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                                    <span className="font-mono font-medium text-[#0E8A5F]">
+                                      {po.poNumber}
+                                    </span>
+                                    <span>|</span>
+                                    <span>납기요청: {po.requestedDeliveryDate}</span>
+                                  </div>
+                                  <h4 className="text-base font-semibold text-slate-900 truncate mt-0.5">
+                                    {po.supplierName} 귀하
+                                  </h4>
+                                </div>
                               </div>
-                            </div>
 
-                            <span
-                              className={`px-2.5 py-0.5 rounded-full text-xs font-medium shrink-0 ${
-                                po.status === 'SENT'
-                                  ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                              <span
+                                className={`px-2.5 py-0.5 rounded-full text-xs font-medium shrink-0 ${
+                                  po.status === 'SENT'
+                                    ? 'bg-emerald-50 text-[#0E8A5F] border border-emerald-200'
+                                    : po.status === 'DOWNLOADED'
+                                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                      : 'bg-slate-100 text-slate-700 border border-slate-200'
+                                }`}
+                              >
+                                {po.status === 'SENT'
+                                  ? '전송 완료'
                                   : po.status === 'DOWNLOADED'
-                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                    : 'bg-slate-100 text-slate-700 border border-slate-200'
-                              }`}
-                            >
-                              {po.status === 'SENT'
-                                ? '전송 완료'
-                                : po.status === 'DOWNLOADED'
-                                  ? '저장 완료'
-                                  : '발행 준비'}
-                            </span>
-                          </div>
-
-                          {/* Supplier Metadata */}
-                          <div className="text-xs sm:text-sm text-slate-600 grid grid-cols-1 sm:grid-cols-2 gap-1.5 bg-slate-50 p-3 rounded-xl border border-slate-200/70">
-                            <div>
-                              담당자: <span className="font-medium text-slate-900">{po.supplierManager}</span>
-                            </div>
-                            <div>
-                              연락처: <span className="font-medium text-slate-900">{po.supplierPhone}</span>
-                            </div>
-                            <div className="sm:col-span-2">
-                              이메일: <span className="font-mono text-indigo-600">{po.supplierEmail}</span>
-                            </div>
-                          </div>
-
-                          {/* Included BOM Parts Table inside PO Card */}
-                          <div className="space-y-1.5">
-                            <div className="flex items-center justify-between text-xs sm:text-sm font-medium text-slate-700">
-                              <span>발주 품목 ({po.totalItemTypes}종)</span>
-                              <span className="text-indigo-600">
-                                합계 {po.totalOrderQty.toLocaleString()}개
+                                    ? '저장 완료'
+                                    : '발행 준비'}
                               </span>
                             </div>
-                            <div className="border border-slate-200 rounded-xl overflow-hidden">
-                              <table className="w-full text-left border-collapse text-xs sm:text-sm">
-                                <thead>
-                                  <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 text-xs">
-                                    <th className="py-2 px-3 font-medium">부품코드</th>
-                                    <th className="py-2 px-3 font-medium">품목명</th>
-                                    <th className="py-2 px-3 font-medium text-right">발주수량</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-200/70">
-                                  {po.items.map((item) => (
-                                    <tr key={item.partCode} className="bg-white">
-                                      <td className="py-2 px-3 font-mono text-indigo-600 text-xs">
-                                        {item.partCode}
-                                      </td>
-                                      <td className="py-2 px-3 text-slate-800 truncate max-w-[200px]">
-                                        {item.partName}
-                                      </td>
-                                      <td className="py-2 px-3 text-right font-mono font-semibold text-slate-900">
-                                        {item.adjustedOrderQty.toLocaleString()} {item.unit}
-                                      </td>
+
+                            {/* Supplier Metadata */}
+                            <div className="text-xs sm:text-sm text-slate-600 grid grid-cols-1 sm:grid-cols-2 gap-1.5 bg-slate-50 p-3 rounded-xl border border-slate-200/70">
+                              <div>
+                                담당자:{' '}
+                                <span className="font-medium text-slate-900">
+                                  {po.supplierManager}
+                                </span>
+                              </div>
+                              <div>
+                                연락처:{' '}
+                                <span className="font-medium text-slate-900">
+                                  {po.supplierPhone}
+                                </span>
+                              </div>
+                              <div className="sm:col-span-2">
+                                이메일:{' '}
+                                <span className="font-mono text-[#0E8A5F]">{po.supplierEmail}</span>
+                              </div>
+                            </div>
+
+                            {/* Included BOM Parts Table inside PO Card */}
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between text-xs sm:text-sm font-medium text-slate-700">
+                                <span>발주 품목</span>
+                                <span className="text-[#0E8A5F]">
+                                  합계 {po.totalOrderQty.toLocaleString()}개
+                                </span>
+                              </div>
+                              <div className="border border-slate-200 rounded-xl overflow-hidden">
+                                <table className="w-full text-left border-collapse text-xs sm:text-sm">
+                                  <thead>
+                                    <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 text-xs">
+                                      <th className="py-2 px-3 font-medium">부품코드</th>
+                                      <th className="py-2 px-3 font-medium">품목명</th>
+                                      <th className="py-2 px-3 font-medium text-right">발주수량</th>
                                     </tr>
-                                  ))}
-                                </tbody>
-                              </table>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-200/70">
+                                    {po.items.map((item) => (
+                                      <tr key={item.partCode} className="bg-white">
+                                        <td className="py-2 px-3 font-mono text-[#0E8A5F] text-xs">
+                                          {item.partCode}
+                                        </td>
+                                        <td className="py-2 px-3 text-slate-800 truncate max-w-[200px]">
+                                          {item.partName}
+                                        </td>
+                                        <td className="py-2 px-3 text-right font-mono font-semibold text-slate-900">
+                                          {item.adjustedOrderQty.toLocaleString()} {item.unit}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Card Footer Action Buttons */}
+                          <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-200 space-y-2">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setPreviewPo(po)}
+                                className="inline-flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl text-xs sm:text-sm font-medium bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 transition-colors cursor-pointer"
+                              >
+                                <Eye className="w-4 h-4 text-[#0E8A5F]" />
+                                양식 보기
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handlePrintPo(po)}
+                                className="inline-flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl text-xs sm:text-sm font-medium bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 transition-colors cursor-pointer"
+                              >
+                                <Printer className="w-4 h-4 text-slate-600" />
+                                프린트
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDownloadPdf(po)}
+                                className="inline-flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl text-xs sm:text-sm font-medium bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors cursor-pointer"
+                              >
+                                <Download className="w-4 h-4" />
+                                PDF 저장
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDownloadExcel(po)}
+                                className="inline-flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl text-xs sm:text-sm font-medium bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-colors cursor-pointer"
+                              >
+                                <FileSpreadsheet className="w-4 h-4" />
+                                엑셀 저장
+                              </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleSendPoPdfEmail(po)}
+                                className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs sm:text-sm font-semibold bg-[#0E8A5F] hover:bg-[#0B704D] text-white transition-colors cursor-pointer"
+                              >
+                                <Send className="w-3.5 h-3.5" />
+                                PDF 발주서 이메일 전송
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleReceivePoItems(po)}
+                                disabled={Boolean(poReceivedMap[po.poNumber])}
+                                className={`w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-medium border transition-colors cursor-pointer ${
+                                  poReceivedMap[po.poNumber]
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 cursor-default'
+                                    : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-200'
+                                }`}
+                              >
+                                <PackageCheck className="w-3.5 h-3.5" />
+                                {poReceivedMap[po.poNumber]
+                                  ? '창고 입고 반영됨'
+                                  : '입고 완료 처리'}
+                              </button>
                             </div>
                           </div>
                         </div>
-
-                        {/* Card Footer Action Buttons */}
-                        <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-200 space-y-2">
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setPreviewPo(po)}
-                              className="inline-flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl text-xs sm:text-sm font-medium bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 transition-colors cursor-pointer"
-                            >
-                              <Eye className="w-4 h-4 text-indigo-600" />
-                              양식 보기
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handlePrintPo(po)}
-                              className="inline-flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl text-xs sm:text-sm font-medium bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 transition-colors cursor-pointer"
-                            >
-                              <Printer className="w-4 h-4 text-slate-600" />
-                              프린트
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDownloadPdf(po)}
-                              className="inline-flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl text-xs sm:text-sm font-medium bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors cursor-pointer"
-                            >
-                              <Download className="w-4 h-4" />
-                              PDF 저장
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDownloadExcel(po)}
-                              className="inline-flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl text-xs sm:text-sm font-medium bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-colors cursor-pointer"
-                            >
-                              <FileSpreadsheet className="w-4 h-4" />
-                              엑셀 저장
-                            </button>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            <button
-                              type="button"
-                              onClick={() => handleSendPoPdfEmail(po)}
-                              className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs sm:text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors cursor-pointer"
-                            >
-                              <Send className="w-3.5 h-3.5" />
-                              PDF 발주서 이메일 전송
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleReceivePoItems(po)}
-                              disabled={Boolean(poReceivedMap[po.poNumber])}
-                              className={`w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-medium border transition-colors cursor-pointer ${
-                                poReceivedMap[po.poNumber]
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 cursor-default'
-                                  : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-200'
-                              }`}
-                            >
-                              <PackageCheck className="w-3.5 h-3.5" />
-                              {poReceivedMap[po.poNumber]
-                                ? '창고 입고 반영됨'
-                                : `입고 완료 처리 (+${po.totalOrderQty}개)`}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </section>
               )}
             </div>
@@ -2879,112 +3000,29 @@ function App() {
                   </div>
                 </div>
 
-                {/* 4 Summary Cards */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  <button
-                    type="button"
-                    onClick={() => setInventoryStatusFilter('ALL')}
-                    className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
-                      inventoryStatusFilter === 'ALL'
-                        ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
-                        : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800'
-                    }`}
-                  >
-                    <div
-                      className={`text-xs font-medium ${
-                        inventoryStatusFilter === 'ALL' ? 'text-slate-300' : 'text-slate-500'
+                {/* Status Filter Tabs (Only Item Titles, No Fixed Numbers Below) */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {(
+                    [
+                      { key: 'ALL', label: '전체 관리 부품' },
+                      { key: 'NORMAL', label: '정상 보유 (안전재고 이상)' },
+                      { key: 'LOW', label: '재고 부족 (안전재고 미달)' },
+                      { key: 'EMPTY', label: '품절 품목 (현재고 0)' },
+                    ] as const
+                  ).map((st) => (
+                    <button
+                      key={st.key}
+                      type="button"
+                      onClick={() => setInventoryStatusFilter(st.key)}
+                      className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-medium border transition-all cursor-pointer ${
+                        inventoryStatusFilter === st.key
+                          ? 'bg-[#0E8A5F] text-white border-[#0E8A5F] shadow-2xs'
+                          : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
                       }`}
                     >
-                      전체 관리 부품
-                    </div>
-                    <div className="text-2xl font-bold mt-1">{inventoryStats.total}종</div>
-                    <div
-                      className={`text-xs mt-1 ${
-                        inventoryStatusFilter === 'ALL' ? 'text-slate-300' : 'text-slate-500'
-                      }`}
-                    >
-                      표준 BOM 연동 품목
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setInventoryStatusFilter('NORMAL')}
-                    className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
-                      inventoryStatusFilter === 'NORMAL'
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                        : 'bg-emerald-50/60 hover:bg-emerald-50 border-emerald-200 text-emerald-950'
-                    }`}
-                  >
-                    <div
-                      className={`text-xs font-medium ${
-                        inventoryStatusFilter === 'NORMAL' ? 'text-emerald-100' : 'text-emerald-700'
-                      }`}
-                    >
-                      정상 보유 (안전재고 이상)
-                    </div>
-                    <div className="text-2xl font-bold mt-1">{inventoryStats.normal}종</div>
-                    <div
-                      className={`text-xs mt-1 ${
-                        inventoryStatusFilter === 'NORMAL' ? 'text-emerald-100' : 'text-emerald-600'
-                      }`}
-                    >
-                      즉시 생산 투입 가능
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setInventoryStatusFilter('LOW')}
-                    className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
-                      inventoryStatusFilter === 'LOW'
-                        ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
-                        : 'bg-amber-50/70 hover:bg-amber-50 border-amber-200 text-amber-950'
-                    }`}
-                  >
-                    <div
-                      className={`text-xs font-medium flex items-center gap-1 ${
-                        inventoryStatusFilter === 'LOW' ? 'text-amber-100' : 'text-amber-700'
-                      }`}
-                    >
-                      <AlertTriangle className="w-3.5 h-3.5" />
-                      재고 부족 (안전재고 미달)
-                    </div>
-                    <div className="text-2xl font-bold mt-1">{inventoryStats.low}종</div>
-                    <div
-                      className={`text-xs mt-1 ${
-                        inventoryStatusFilter === 'LOW' ? 'text-amber-100' : 'text-amber-700'
-                      }`}
-                    >
-                      보충 발주 권장
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setInventoryStatusFilter('EMPTY')}
-                    className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
-                      inventoryStatusFilter === 'EMPTY'
-                        ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
-                        : 'bg-rose-50/70 hover:bg-rose-50 border-rose-200 text-rose-950'
-                    }`}
-                  >
-                    <div
-                      className={`text-xs font-medium ${
-                        inventoryStatusFilter === 'EMPTY' ? 'text-rose-100' : 'text-rose-700'
-                      }`}
-                    >
-                      품절 품목 (현재고 0)
-                    </div>
-                    <div className="text-2xl font-bold mt-1">{inventoryStats.empty}종</div>
-                    <div
-                      className={`text-xs mt-1 ${
-                        inventoryStatusFilter === 'EMPTY' ? 'text-rose-100' : 'text-rose-600'
-                      }`}
-                    >
-                      긴급 발주 필요
-                    </div>
-                  </button>
+                      {st.label}
+                    </button>
+                  ))}
                 </div>
 
                 {/* Add New Inventory Part Form */}
@@ -3445,21 +3483,21 @@ function App() {
                       onClick={() => setPartnerFilter(type)}
                       className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium cursor-pointer ${
                         partnerFilter === type
-                          ? 'bg-slate-900 text-white'
+                          ? 'bg-[#0F2E26] text-white'
                           : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                       }`}
                     >
                       {type === 'ALL'
-                        ? `전체 (${partners.length})`
+                        ? '전체'
                         : type === 'CLIENT'
-                          ? `수주 고객사 (${clientPartners.length})`
-                          : `매입 발주처 (${supplierPartners.length})`}
+                          ? '수주 고객사'
+                          : '매입 발주처'}
                     </button>
                   ))}
                   <button
                     type="button"
                     onClick={() => setShowNewPartnerForm((v) => !v)}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-[#0E8A5F] hover:bg-[#0B704D] text-white cursor-pointer"
                   >
                     <Plus className="w-4 h-4" />
                     거래처 추가
@@ -3707,12 +3745,7 @@ function App() {
               {/* Top Header */}
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-200 pb-4">
                 <div>
-                  <div className="flex items-center gap-2.5">
-                    <h2 className="text-xl font-bold text-slate-900">제품 · BOM 관리</h2>
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-violet-50 text-violet-700 border border-violet-200">
-                      등록 키오스크 {kioskModels.length}종
-                    </span>
-                  </div>
+                  <h2 className="text-xl font-bold text-[#0F2E26]">제품 · BOM 관리</h2>
                   <p className="text-sm text-slate-500 mt-1">
                     무인민원발급기 및 키오스크 제품(신제품 등록·품절 전환·규격 수정)과 각 모델 1대당 소요되는 BOM 부품 구성을 관리합니다.
                   </p>
@@ -3722,7 +3755,7 @@ function App() {
                   <button
                     type="button"
                     onClick={() => setShowAddModelForm((v) => !v)}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-2xs transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-[#0E8A5F] hover:bg-[#0B704D] text-white shadow-2xs transition-colors cursor-pointer"
                   >
                     <Plus className="w-4 h-4" />
                     신제품(키오스크 모델) 추가
@@ -3730,7 +3763,7 @@ function App() {
                   <button
                     type="button"
                     onClick={() => setShowAddMasterBomForm((v) => !v)}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-violet-600 hover:bg-violet-500 text-white shadow-2xs transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-[#0F2E26] hover:bg-slate-800 text-white shadow-2xs transition-colors cursor-pointer"
                   >
                     <Plus className="w-4 h-4" />[{selectedMasterModelCode}]에 신규 부품 추가
                   </button>
@@ -3859,28 +3892,19 @@ function App() {
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {(
                     [
-                      { key: 'ALL', label: `전체 제품 (${kioskModels.length})` },
-                      {
-                        key: 'ACTIVE',
-                        label: `판매중 (${kioskModels.filter((m) => (m.status || 'ACTIVE') === 'ACTIVE').length})`,
-                      },
-                      {
-                        key: 'NEW',
-                        label: `신제품 (${kioskModels.filter((m) => m.status === 'NEW').length})`,
-                      },
-                      {
-                        key: 'SOLD_OUT',
-                        label: `일시품절 (${kioskModels.filter((m) => m.status === 'SOLD_OUT').length})`,
-                      },
+                      { key: 'ALL', label: '전체 제품' },
+                      { key: 'ACTIVE', label: '판매중' },
+                      { key: 'NEW', label: '신제품' },
+                      { key: 'SOLD_OUT', label: '일시품절' },
                     ] as const
                   ).map((tab) => (
                     <button
                       key={tab.key}
                       type="button"
                       onClick={() => setModelStatusFilter(tab.key)}
-                      className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
+                      className={`px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
                         modelStatusFilter === tab.key
-                          ? 'bg-slate-900 text-white'
+                          ? 'bg-[#0F2E26] text-white'
                           : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                       }`}
                     >
@@ -3896,12 +3920,12 @@ function App() {
                     placeholder="모델코드, 제품명 검색..."
                     value={modelSearch}
                     onChange={(e) => setModelSearch(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-300 text-sm focus:outline-none focus:border-violet-500 focus:bg-white"
+                    className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-300 text-sm focus:outline-none focus:border-[#0E8A5F] focus:bg-white"
                   />
                 </div>
               </div>
 
-              {/* Kiosk Models Grid Selector */}
+              {/* Kiosk Models Grid Selector (Clean Title & Code Only, No Fixed Numbers Below) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                 {filteredMasterModels.map((m) => {
                   const isSelected = selectedMasterModelCode === m.modelCode
@@ -3912,7 +3936,7 @@ function App() {
                       onClick={() => setSelectedMasterModelCode(m.modelCode)}
                       className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 ${
                         isSelected
-                          ? 'bg-violet-50/80 border-2 border-violet-600 shadow-2xs'
+                          ? 'bg-emerald-50/70 border-2 border-[#0E8A5F] shadow-2xs'
                           : 'bg-white hover:bg-slate-50 border-slate-200'
                       }`}
                     >
@@ -3920,7 +3944,7 @@ function App() {
                         <span
                           className={`px-2 py-0.5 rounded font-mono text-xs font-medium ${
                             isSelected
-                              ? 'bg-violet-600 text-white'
+                              ? 'bg-[#0E8A5F] text-white'
                               : 'bg-slate-100 text-slate-700'
                           }`}
                         >
@@ -3929,7 +3953,7 @@ function App() {
                         <span
                           className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${
                             status === 'NEW'
-                              ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                              ? 'bg-emerald-50 text-[#0E8A5F] border border-emerald-200'
                               : status === 'SOLD_OUT'
                                 ? 'bg-rose-50 text-rose-700 border border-rose-200'
                                 : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
@@ -3944,12 +3968,6 @@ function App() {
                       </div>
                       <div className="font-medium text-slate-900 text-sm line-clamp-1">
                         {m.modelName}
-                      </div>
-                      <div className="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-slate-200/70">
-                        <span>구성 BOM 부품</span>
-                        <span className="text-violet-700 font-semibold">
-                          {m.bom.length}종 (대당 {m.bom.reduce((s, b) => s + b.qtyPerUnit, 0)}개)
-                        </span>
                       </div>
                     </div>
                   )
@@ -4500,12 +4518,12 @@ function App() {
       {/* Bottom Creator Footer */}
       <footer className="border-t border-slate-200 bg-white py-5 px-4 text-center mt-auto">
         <div className="max-w-[1440px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs sm:text-sm text-slate-500">
-          <span>키오스크 발주 관리 시스템</span>
-          <p className="text-slate-600">
-            <span className="text-slate-400 mr-2">제작자</span>
-            <span className="font-medium text-slate-700">
-              김동준 / 최재혁 / 김여원 / 김서연
-            </span>
+          <span className="font-medium text-[#0F2E26]">키오스크 발주 관리 시스템</span>
+          <p className="text-slate-700 tracking-wide">
+            <span className="text-slate-300">|</span>
+            <span className="mx-2 font-medium text-[#0F2E26]">AI아이</span>
+            <span className="text-slate-300 mr-2.5">|</span>
+            <span>김동준 · 최재혁 · 김여원 · 김서연</span>
           </p>
         </div>
       </footer>
