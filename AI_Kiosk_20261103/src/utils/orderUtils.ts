@@ -177,13 +177,13 @@ export function downloadPurchaseOrderCsv(
 
   // Row 0: Top Accent Banner (A1:H1)
   const bannerStyle = {
-    fill: { fgColor: { rgb: '4F46E5' } },
+    fill: { fgColor: { rgb: '0E8A5F' } },
     font: { name: '맑은 고딕', sz: 10, bold: true, color: { rgb: 'FFFFFF' } },
     alignment: { horizontal: 'center', vertical: 'center' },
   }
   rows.push([
     {
-      v: 'OFFICIAL PURCHASE ORDER  ·  AI 기반 키오스크 매출·매입 발주 자동화 시스템',
+      v: 'OFFICIAL PURCHASE ORDER  ·  키오스크 발주 관리 시스템',
       t: 's',
       s: bannerStyle,
     },
@@ -199,12 +199,12 @@ export function downloadPurchaseOrderCsv(
 
   // Row 1 & Row 2: Title (A2:D3) + Approval Box (E2:H3)
   const titleStyle = {
-    font: { name: '맑은 고딕', sz: 22, bold: true, color: { rgb: '0F172A' } },
+    font: { name: '맑은 고딕', sz: 22, bold: true, color: { rgb: '0F2E26' } },
     alignment: { horizontal: 'left', vertical: 'center' },
   }
   const apprSideStyle = {
     fill: { fgColor: { rgb: 'E2E8F0' } },
-    font: { name: '맑은 고딕', sz: 10, bold: true, color: { rgb: '1E293B' } },
+    font: { name: '맑은 고딕', sz: 10, bold: true, color: { rgb: '0F2E26' } },
     alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
     border: thinBorder,
   }
@@ -216,13 +216,13 @@ export function downloadPurchaseOrderCsv(
   }
   const apprValStyle = {
     fill: { fgColor: { rgb: 'FFFFFF' } },
-    font: { name: '맑은 고딕', sz: 10, bold: true, color: { rgb: '4338CA' } },
+    font: { name: '맑은 고딕', sz: 10, bold: true, color: { rgb: '0F2E26' } },
     alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
     border: thinBorder,
   }
   const apprStampStyle = {
-    fill: { fgColor: { rgb: 'FFF1F2' } },
-    font: { name: '맑은 고딕', sz: 10, bold: true, color: { rgb: 'E11D48' } },
+    fill: { fgColor: { rgb: 'ECFDF5' } },
+    font: { name: '맑은 고딕', sz: 10, bold: true, color: { rgb: '0E8A5F' } },
     alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
     border: thinBorder,
   }
@@ -243,7 +243,7 @@ export function downloadPurchaseOrderCsv(
     emptyCell({}),
     emptyCell({}),
     emptyCell(apprSideStyle),
-    { v: `AI자동발주\n(${po.issueDate.slice(5)})`, t: 's', s: apprValStyle },
+    { v: `자동발주\n(${po.issueDate.slice(5)})`, t: 's', s: apprValStyle },
     { v: '구매팀장\n(승인필)', t: 's', s: apprValStyle },
     { v: '대표이사\n(법인인감 날인필)', t: 's', s: apprStampStyle },
   ])
@@ -255,20 +255,20 @@ export function downloadPurchaseOrderCsv(
 
   // Row 4: Document Meta Row (발주번호 / 발주일자 / 납기요청일)
   const metaLabelStyle = {
-    fill: { fgColor: { rgb: 'EEF2FF' } },
-    font: { name: '맑은 고딕', sz: 10, bold: true, color: { rgb: '312E81' } },
+    fill: { fgColor: { rgb: 'ECFDF5' } },
+    font: { name: '맑은 고딕', sz: 10, bold: true, color: { rgb: '0F2E26' } },
     alignment: { horizontal: 'center', vertical: 'center' },
     border: thinBorder,
   }
   const metaValStyle = {
     fill: { fgColor: { rgb: 'FFFFFF' } },
-    font: { name: '맑은 고딕', sz: 11, bold: true, color: { rgb: '0F172A' } },
+    font: { name: '맑은 고딕', sz: 11, bold: true, color: { rgb: '0F2E26' } },
     alignment: { horizontal: 'center', vertical: 'center' },
     border: thinBorder,
   }
   const metaDueStyle = {
     fill: { fgColor: { rgb: 'FFFFFF' } },
-    font: { name: '맑은 고딕', sz: 11, bold: true, color: { rgb: '4338CA' } },
+    font: { name: '맑은 고딕', sz: 11, bold: true, color: { rgb: '0E8A5F' } },
     alignment: { horizontal: 'center', vertical: 'center' },
     border: thinBorder,
   }
@@ -291,13 +291,13 @@ export function downloadPurchaseOrderCsv(
 
   // Row 6: Party Section Headers (수신처 vs 발신처)
   const leftSecHdr = {
-    fill: { fgColor: { rgb: '4338CA' } },
+    fill: { fgColor: { rgb: '0E8A5F' } },
     font: { name: '맑은 고딕', sz: 11, bold: true, color: { rgb: 'FFFFFF' } },
     alignment: { horizontal: 'left', vertical: 'center' },
     border: thinBorder,
   }
   const rightSecHdr = {
-    fill: { fgColor: { rgb: '1E293B' } },
+    fill: { fgColor: { rgb: '0F2E26' } },
     font: { name: '맑은 고딕', sz: 11, bold: true, color: { rgb: 'FFFFFF' } },
     alignment: { horizontal: 'left', vertical: 'center' },
     border: thinBorder,
@@ -388,14 +388,14 @@ export function downloadPurchaseOrderCsv(
 
   // Row 12: Summary Strip
   const sumLeftStyle = {
-    fill: { fgColor: { rgb: 'EEF2FF' } },
-    font: { name: '맑은 고딕', sz: 10, bold: true, color: { rgb: '1E1B4B' } },
+    fill: { fgColor: { rgb: 'ECFDF5' } },
+    font: { name: '맑은 고딕', sz: 10, bold: true, color: { rgb: '0F2E26' } },
     alignment: { horizontal: 'left', vertical: 'center' },
     border: thinBorder,
   }
   const sumRightStyle = {
-    fill: { fgColor: { rgb: 'EEF2FF' } },
-    font: { name: '맑은 고딕', sz: 11, bold: true, color: { rgb: '4338CA' } },
+    fill: { fgColor: { rgb: 'ECFDF5' } },
+    font: { name: '맑은 고딕', sz: 11, bold: true, color: { rgb: '0E8A5F' } },
     alignment: { horizontal: 'right', vertical: 'center' },
     border: thinBorder,
   }
@@ -425,7 +425,7 @@ export function downloadPurchaseOrderCsv(
 
   // Row 14: Item Table Header
   const tblHeaderStyle = {
-    fill: { fgColor: { rgb: '1E293B' } },
+    fill: { fgColor: { rgb: '0F2E26' } },
     font: { name: '맑은 고딕', sz: 10, bold: true, color: { rgb: 'FFFFFF' } },
     alignment: { horizontal: 'center', vertical: 'center' },
     border: darkBorder,
@@ -445,7 +445,7 @@ export function downloadPurchaseOrderCsv(
   const minItemRows = Math.max(po.items.length, 5)
   for (let i = 0; i < minItemRows; i++) {
     const item = po.items[i]
-    const rowBg = i % 2 === 1 ? 'F8FAFC' : 'FFFFFF'
+    const rowBg = i % 2 === 1 ? 'F7FAF8' : 'FFFFFF'
 
     const baseCenter = {
       fill: { fgColor: { rgb: rowBg } },
@@ -455,13 +455,13 @@ export function downloadPurchaseOrderCsv(
     }
     const codeStyle = {
       fill: { fgColor: { rgb: rowBg } },
-      font: { name: 'Consolas', sz: 10, bold: true, color: { rgb: '4338CA' } },
+      font: { name: 'Consolas', sz: 10, bold: true, color: { rgb: '0E8A5F' } },
       alignment: { horizontal: 'center', vertical: 'center' },
       border: thinBorder,
     }
     const nameStyle = {
       fill: { fgColor: { rgb: rowBg } },
-      font: { name: '맑은 고딕', sz: 10, bold: true, color: { rgb: '0F172A' } },
+      font: { name: '맑은 고딕', sz: 10, bold: true, color: { rgb: '0F2E26' } },
       alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
       border: thinBorder,
     }
@@ -473,13 +473,13 @@ export function downloadPurchaseOrderCsv(
     }
     const modelStyle = {
       fill: { fgColor: { rgb: rowBg } },
-      font: { name: '맑은 고딕', sz: 9, bold: true, color: { rgb: '4F46E5' } },
+      font: { name: '맑은 고딕', sz: 9, bold: true, color: { rgb: '0E8A5F' } },
       alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
       border: thinBorder,
     }
     const qtyStyle = {
       fill: { fgColor: { rgb: rowBg } },
-      font: { name: '맑은 고딕', sz: 11, bold: true, color: { rgb: '0F172A' } },
+      font: { name: '맑은 고딕', sz: 11, bold: true, color: { rgb: '0F2E26' } },
       alignment: { horizontal: 'right', vertical: 'center' },
       numFmt: '#,##0',
       border: thinBorder,
@@ -517,7 +517,7 @@ export function downloadPurchaseOrderCsv(
   const totalRowIdx = rows.length
   const totalLblStyle = {
     fill: { fgColor: { rgb: 'F1F5F9' } },
-    font: { name: '맑은 고딕', sz: 11, bold: true, color: { rgb: '1E293B' } },
+    font: { name: '맑은 고딕', sz: 11, bold: true, color: { rgb: '0F2E26' } },
     alignment: { horizontal: 'right', vertical: 'center' },
     border: darkBorder,
   }
@@ -528,8 +528,8 @@ export function downloadPurchaseOrderCsv(
     border: darkBorder,
   }
   const totalQtyStyle = {
-    fill: { fgColor: { rgb: 'EEF2FF' } },
-    font: { name: '맑은 고딕', sz: 12, bold: true, color: { rgb: '4338CA' } },
+    fill: { fgColor: { rgb: 'ECFDF5' } },
+    font: { name: '맑은 고딕', sz: 12, bold: true, color: { rgb: '0E8A5F' } },
     alignment: { horizontal: 'right', vertical: 'center' },
     numFmt: '#,##0',
     border: darkBorder,
@@ -552,13 +552,13 @@ export function downloadPurchaseOrderCsv(
 
   // Notes Rows
   const noteHeaderStyle = {
-    fill: { fgColor: { rgb: 'F8FAFC' } },
-    font: { name: '맑은 고딕', sz: 10, bold: true, color: { rgb: '1E293B' } },
+    fill: { fgColor: { rgb: 'F7FAF8' } },
+    font: { name: '맑은 고딕', sz: 10, bold: true, color: { rgb: '0F2E26' } },
     alignment: { horizontal: 'left', vertical: 'center' },
     border: thinBorder,
   }
   const noteBodyStyle = {
-    fill: { fgColor: { rgb: 'F8FAFC' } },
+    fill: { fgColor: { rgb: 'F7FAF8' } },
     font: { name: '맑은 고딕', sz: 9.5, color: { rgb: '475569' } },
     alignment: { horizontal: 'left', vertical: 'center' },
     border: thinBorder,
@@ -575,7 +575,7 @@ export function downloadPurchaseOrderCsv(
       noteBodyStyle,
     ],
     [
-      '  3. 발행시스템: AI 기반 키오스크 매출·매입 발주 자동화 웹 시스템   |   수령 확인 (공급사 인): ________________ (인)',
+      '  3. 발행시스템: 키오스크 발주 관리 시스템   |   수령 확인 (공급사 인): ________________ (인)',
       noteHeaderStyle,
     ],
   ]
@@ -634,7 +634,7 @@ export function openPurchaseOrderPrintOrPdf(
       (item, idx) => `
       <tr>
         <td class="center">${idx + 1}</td>
-        <td class="mono bold indigo">${item.partCode}</td>
+        <td class="mono bold green">${item.partCode}</td>
         <td class="center"><span class="badge">${item.category}</span></td>
         <td>
           <div class="part-name">${item.partName}</div>
@@ -659,78 +659,78 @@ export function openPurchaseOrderPrintOrPdf(
   <style>
     @page { size: A4 portrait; margin: 14mm; }
     * { box-sizing: border-box; font-family: 'Pretendard', 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; }
-    body { margin: 0; padding: 24px; background: #f8fafc; color: #0f172a; }
+    body { margin: 0; padding: 24px; background: #f7faf8; color: #0f2e26; }
     .guide-banner {
       max-width: 820px; margin: 0 auto 16px auto; padding: 12px 18px;
-      background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 10px;
-      display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: #312e81;
+      background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px;
+      display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: #0f2e26;
     }
     .guide-banner button {
-      background: #4f46e5; color: #fff; border: none; border-radius: 8px;
-      padding: 8px 16px; font-weight: 700; cursor: pointer; font-size: 13px;
+      background: #0e8a5f; color: #fff; border: none; border-radius: 6px;
+      padding: 8px 16px; font-weight: 600; cursor: pointer; font-size: 13px;
     }
     .sheet {
       max-width: 820px; margin: 0 auto; background: #ffffff;
-      border: 1px solid #cbd5e1; border-radius: 12px; padding: 36px 40px;
-      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.06);
+      border: 1px solid #cbd5e1; border-radius: 8px; padding: 36px 40px;
+      box-shadow: 0 4px 16px rgba(15, 46, 38, 0.05);
     }
     .top-bar {
-      height: 6px; background: linear-gradient(90deg, #4f46e5, #7c3aed, #10b981);
-      border-radius: 6px; margin-bottom: 24px;
+      height: 5px; background: #0e8a5f;
+      margin-bottom: 24px;
     }
     .header-row {
       display: flex; justify-content: space-between; align-items: flex-start;
-      border-bottom: 2px solid #0f172a; padding-bottom: 20px; margin-bottom: 22px;
+      border-bottom: 2px solid #0f2e26; padding-bottom: 20px; margin-bottom: 22px;
     }
-    .doc-sub { font-size: 11px; font-weight: 800; color: #4f46e5; letter-spacing: 2px; }
-    .doc-title { font-size: 32px; font-weight: 900; letter-spacing: 6px; margin: 4px 0 8px 0; color: #0f172a; }
+    .doc-sub { font-size: 11px; font-weight: 700; color: #0e8a5f; letter-spacing: 2px; }
+    .doc-title { font-size: 32px; font-weight: 800; letter-spacing: 6px; margin: 4px 0 8px 0; color: #0f2e26; }
     .doc-meta { font-size: 13px; color: #475569; line-height: 1.6; }
-    .doc-meta strong { color: #0f172a; }
+    .doc-meta strong { color: #0f2e26; }
     .approval-table { border-collapse: collapse; font-size: 12px; text-align: center; }
     .approval-table th, .approval-table td { border: 1px solid #94a3b8; width: 68px; }
-    .approval-table th { background: #f1f5f9; padding: 5px; font-weight: 700; color: #334155; }
-    .approval-table td { height: 52px; vertical-align: middle; color: #4f46e5; font-weight: 800; }
-    .approval-side { width: 26px !important; background: #e2e8f0 !important; font-weight: 800; }
+    .approval-table th { background: #f1f5f9; padding: 5px; font-weight: 600; color: #334155; }
+    .approval-table td { height: 52px; vertical-align: middle; color: #0e8a5f; font-weight: 700; }
+    .approval-side { width: 26px !important; background: #e2e8f0 !important; font-weight: 700; color: #0f2e26 !important; }
     .party-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
-    .party-box { border: 1px solid #cbd5e1; border-radius: 10px; padding: 16px; background: #f8fafc; position: relative; }
-    .party-tag { font-size: 11px; font-weight: 800; color: #4f46e5; margin-bottom: 6px; display: block; }
-    .party-name { font-size: 18px; font-weight: 800; color: #0f172a; margin-bottom: 10px; }
+    .party-box { border: 1px solid #cbd5e1; border-radius: 8px; padding: 16px; background: #f7faf8; position: relative; }
+    .party-tag { font-size: 11px; font-weight: 700; color: #0e8a5f; margin-bottom: 6px; display: block; }
+    .party-name { font-size: 18px; font-weight: 700; color: #0f2e26; margin-bottom: 10px; }
     .party-info { font-size: 12.5px; color: #334155; line-height: 1.65; }
     .stamp {
-      position: absolute; top: 16px; right: 16px; width: 52px; height: 52px;
-      border: 2.5px solid #e11d48; border-radius: 50%; color: #e11d48;
-      font-size: 10px; font-weight: 900; display: flex; align-items: center;
+      position: absolute; top: 16px; right: 16px; width: 50px; height: 50px;
+      border: 1.5px solid #0e8a5f; border-radius: 50%; color: #0e8a5f;
+      font-size: 10px; font-weight: 700; display: flex; align-items: center;
       justify-content: center; text-align: center; line-height: 1.15;
-      transform: rotate(-8deg); background: rgba(255, 241, 242, 0.7);
+      background: #ecfdf5;
     }
     .summary-strip {
       display: flex; justify-content: space-between; align-items: center;
-      background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 10px;
+      background: #f3f8f5; border: 1px solid #cfe5d8; border-radius: 8px;
       padding: 12px 18px; margin-bottom: 20px; font-size: 14px;
     }
-    .summary-strip strong { color: #4338ca; font-size: 17px; }
+    .summary-strip strong { color: #0e8a5f; font-size: 17px; }
     table.items { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-bottom: 20px; }
     table.items th {
-      background: #1e293b; color: #ffffff; padding: 10px 8px;
-      font-weight: 700; border: 1px solid #1e293b;
+      background: #0f2e26; color: #ffffff; padding: 10px 8px;
+      font-weight: 600; border: 1px solid #0f2e26;
     }
     table.items td { padding: 10px 8px; border: 1px solid #cbd5e1; vertical-align: middle; }
-    table.items tbody tr:nth-child(even) { background: #f8fafc; }
-    table.items tfoot td { background: #f1f5f9; font-weight: 800; padding: 11px 8px; border-top: 2px solid #0f172a; }
+    table.items tbody tr:nth-child(even) { background: #f7faf8; }
+    table.items tfoot td { background: #f1f5f9; font-weight: 700; padding: 11px 8px; border-top: 2px solid #0f2e26; }
     .center { text-align: center; }
     .right { text-align: right; }
     .mono { font-family: Consolas, monospace; }
-    .bold { font-weight: 700; }
-    .indigo { color: #4338ca; }
-    .badge { background: #e2e8f0; color: #334155; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; }
-    .part-name { font-weight: 700; color: #0f172a; margin-bottom: 2px; }
+    .bold { font-weight: 600; }
+    .green { color: #0e8a5f; }
+    .badge { background: #e2e8f0; color: #334155; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+    .part-name { font-weight: 600; color: #0f2e26; margin-bottom: 2px; }
     .part-spec { font-size: 11px; color: #64748b; }
-    .models { font-size: 11px; color: #4f46e5; font-weight: 600; }
-    .qty { font-size: 14px; font-weight: 800; color: #0f172a; }
+    .models { font-size: 11px; color: #0e8a5f; font-weight: 500; }
+    .qty { font-size: 14px; font-weight: 700; color: #0f2e26; }
     .note { font-size: 11px; color: #64748b; }
     .footer-box {
-      border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px 16px;
-      background: #f8fafc; font-size: 12px; color: #475569; line-height: 1.6;
+      border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px 16px;
+      background: #f7faf8; font-size: 12px; color: #475569; line-height: 1.6;
     }
     .sign-row {
       margin-top: 24px; display: flex; justify-content: space-between; align-items: center;
@@ -748,10 +748,10 @@ export function openPurchaseOrderPrintOrPdf(
     <span>
       ${
         mode === 'PDF'
-          ? '💡 인쇄 대화상자에서 <strong>[대상(프린터): PDF로 저장]</strong>을 선택하시면 <strong>' +
+          ? '인쇄 대화상자에서 <strong>[대상(프린터): PDF로 저장]</strong>을 선택하시면 <strong>' +
             po.pdfFileName +
-            '</strong> 파일로 즉시 저장됩니다.'
-          : '🖨️ 인쇄 미리보기 화면입니다. 프린터를 선택하여 출력하거나 PDF로 저장하실 수 있습니다.'
+            '</strong> 파일로 저장됩니다.'
+          : '인쇄 미리보기 화면입니다. 프린터를 선택하여 출력하거나 PDF로 저장하실 수 있습니다.'
       }
     </span>
     <button onclick="window.print()">인쇄 / PDF 저장 실행</button>
@@ -765,7 +765,7 @@ export function openPurchaseOrderPrintOrPdf(
         <h1 class="doc-title">구 매 발 주 서</h1>
         <div class="doc-meta">
           <div>발주번호: <strong>${po.poNumber}</strong> &nbsp;|&nbsp; 발주일자: <strong>${po.issueDate}</strong></div>
-          <div>입고 납기요청일: <strong style="color:#4f46e5;">${po.requestedDeliveryDate}</strong></div>
+          <div>입고 납기요청일: <strong style="color:#0e8a5f;">${po.requestedDeliveryDate}</strong></div>
         </div>
       </div>
 
@@ -777,7 +777,7 @@ export function openPurchaseOrderPrintOrPdf(
           <th>승 인</th>
         </tr>
         <tr>
-          <td>AI자동발주<br/><span style="font-size:10px;color:#64748b;">${po.issueDate.slice(5)}</span></td>
+          <td>자동발주<br/><span style="font-size:10px;color:#64748b;">${po.issueDate.slice(5)}</span></td>
           <td>구매팀장<br/>승인필</td>
           <td>대표이사<br/>승인필</td>
         </tr>
@@ -832,7 +832,7 @@ export function openPurchaseOrderPrintOrPdf(
         <tr>
           <td colspan="5" class="right">발주 수량 총 합계 (품목 ${po.totalItemTypes}종)</td>
           <td class="center">합계</td>
-          <td class="right" style="color:#4338ca;font-size:15px;">${po.totalOrderQty.toLocaleString()}</td>
+          <td class="right" style="color:#0e8a5f;font-size:15px;">${po.totalOrderQty.toLocaleString()}</td>
           <td class="center">-</td>
         </tr>
       </tfoot>
@@ -845,7 +845,7 @@ export function openPurchaseOrderPrintOrPdf(
     </div>
 
     <div class="sign-row">
-      <span>발행시스템: AI 기반 키오스크 매출·매입 발주 자동화 웹 시스템</span>
+      <span>발행시스템: 키오스크 발주 관리 시스템</span>
       <span>수령 확인 (공급사 인): ________________ (인)</span>
     </div>
   </div>
